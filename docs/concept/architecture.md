@@ -51,7 +51,7 @@ flowchart TB
 | **mock-severholod** | Справочники и dry-run ITSM | FastAPI, JSON-сид | [api-contracts-mock.md](api-contracts-mock.md), [ADR-0001](../adrs/0001-two-contours.md) |
 | **backend** | Сессия, обращения, агент, SSE | FastAPI, LangChain, SQLAlchemy | [api-contracts.md](api-contracts.md) |
 | **frontend** | Стол, журнал, карточка | Next.js, shadcn | [frontend-ux-logic.md](frontend-ux-logic.md) |
-| **postgres** | Обращения Рефлекса + чекпоинтер | PostgreSQL 15+ | [data-model.md](data-model.md) |
+| **postgres** | Обращения, лента, хронология | PostgreSQL 15+ | [data-model.md](data-model.md) |
 | **langfuse** | Трассы | официальный образ | [integrations.md](integrations.md) |
 
 Слои backend: **API → facade/service → repository → DB**. В Postgres из роутера не ходим. Мок: **router → in-memory/JSON store**, репозиторий над файлом сида, без ORM.

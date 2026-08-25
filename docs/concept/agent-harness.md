@@ -49,7 +49,7 @@ flowchart TB
 
 | Слой | Что лежит |
 |------|-----------|
-| Рантайм | `create_agent`, чекпоинтер, стрим |
+| Рантайм | LangChain `ChatOpenAI.bind_tools`, цикл `run_tool_loop`, SSE |
 | Этот harness | system, тулы, расчёт, предохранитель |
 
 Путь: `backend/` когда появится каркас. Чужих агентов нет.
@@ -71,7 +71,9 @@ flowchart TB
 | `cancel` | нет | прогон короткий |
 | `context_usage` | да, если провайдер дал | считает backend |
 
-Старт без `appeal_id` невозможен. `thread_id = appeal_id`. Первый user — собранный вход, не сырой JSON. В системный контекст хода — актуальный `card`.
+Старт без `appeal_id` невозможен. Карточка живёт в Postgres, не в чекпоинтере LangGraph. Первый user — собранный вход, не сырой JSON. В ход — актуальный `card`.
+
+`create_agent` на живом OpenRouter зависал (~90 с, SSL / astream). Пилот крутит явный цикл: до 8 шагов, те же пять тулов, финал парсим из текста. К `create_agent` не возвращаемся без отдельного доказательства, что стрим живой.
 
 ---
 
@@ -79,7 +81,7 @@ flowchart TB
 
 | Вопрос | Решение |
 |--------|---------|
-| SDK | LangChain `init_chat_model` |
+| SDK | LangChain `ChatOpenAI` |
 | Gateway | прямой OpenAI-compatible, LiteLLM нет |
 | Где модели | внешний API |
 | Каталог в UI | нет |
@@ -131,8 +133,8 @@ In-process обёртки над HTTP. Второй потребитель по�
 | Контур | Где | Кто пишет |
 |--------|-----|-----------|
 | Лента UI | `appeal_messages` | backend по стриму |
-| Контекст агента | чекпоинтер, `thread_id = appeal_id` | фреймворк + тулы |
-| Observability | Langfuse | callback LangChain |
+| Контекст агента | `appeals.card` + лента сообщений | тулы и runner |
+| Observability | Langfuse | ручной `Langfuse().trace` (CallbackHandler 2.x ломается на LangChain 1) |
 
 Todos, VFS, память о диспетчере между обращениями — нет. Сжатие — только если фреймворк сам.
 
@@ -160,6 +162,6 @@ Todos, VFS, память о диспетчере между обращениям
 
 | Вопрос | Когда |
 |--------|-------|
-| Переработка system prompt и описаний тулов | sprint 04, обязательно, skill `agent-harness-construction` |
+| Переработка system prompt и описаний тулов | сделано в sprint 04 |
 | TodoListMiddleware | если на живых прогонах модель пропускает тулы |
 | Точные формулы SLA | уже в [regulations.md](../requirements/severholod/regulations.md) |

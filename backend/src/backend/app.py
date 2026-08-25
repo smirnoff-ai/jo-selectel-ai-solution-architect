@@ -5,6 +5,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from backend.agent.fake_runner import FakeAgentRunner
+from backend.agent.run_hub import RunHub
+from backend.agent.runner import AgentRunner
 from backend.db import create_engine, create_schema, session_factory
 from backend.db_ping import ping_database
 from backend.routers.appeals import router as appeals_router
@@ -26,6 +29,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         engine = create_engine(resolved.database_url)
         app.state.engine = engine
         app.state.session_factory = session_factory(engine)
+        app.state.run_hub = RunHub()
+        if resolved.use_agent:
+            app.state.agent_runner = AgentRunner(
+                resolved, app.state.run_hub, app.state.session_factory
+            )
+        else:
+            app.state.agent_runner = FakeAgentRunner(app.state.run_hub, app.state.session_factory)
         if resolved.ping_database:
             await ping_database(resolved.database_url)
         if resolved.ensure_schema:

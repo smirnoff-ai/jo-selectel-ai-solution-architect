@@ -24,8 +24,11 @@ def test_create_and_card(db_client: TestClient) -> None:
     assert created.status_code == 201
     body = created.json()
     assert body["status"] == "new"
-    assert body["run_status"] == "idle"
+    assert body["run_status"] == "running"
     appeal_id = body["id"]
+    stream = db_client.get(f"/api/v1/appeals/{appeal_id}/stream")
+    assert stream.status_code == 200
+    assert "run_finished" in stream.text
 
     card = db_client.get(f"/api/v1/appeals/{appeal_id}")
     assert card.status_code == 200
@@ -71,6 +74,8 @@ def test_reply_lands_in_messages(db_client: TestClient) -> None:
         json={"text": "Это Дмитровское, ХУ-17"},
     )
     assert reply.status_code == 202
+    assert reply.json()["run_status"] == "running"
+    db_client.get(f"/api/v1/appeals/{appeal_id}/stream")
     messages = db_client.get(f"/api/v1/appeals/{appeal_id}/messages")
     assert messages.status_code == 200
     items = messages.json()["items"]
@@ -79,9 +84,11 @@ def test_reply_lands_in_messages(db_client: TestClient) -> None:
     assert items[0]["body"]["text"].startswith("Это Дмитровское")
 
 
-def test_stream_stub(db_client: TestClient) -> None:
+def test_stream_events(db_client: TestClient) -> None:
     _login(db_client)
     appeal_id = db_client.post("/api/v1/appeals", json=CREATE).json()["id"]
     response = db_client.get(f"/api/v1/appeals/{appeal_id}/stream")
     assert response.status_code == 200
+    assert "run_started" in response.text
     assert "run_finished" in response.text
+    assert db_client.get(f"/api/v1/appeals/{appeal_id}").json()["run_status"] == "idle"

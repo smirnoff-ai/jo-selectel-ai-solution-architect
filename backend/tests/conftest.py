@@ -25,6 +25,7 @@ def test_settings() -> Settings:
         mock_severholod_url="http://mock-severholod:8080",
         ping_database=False,
         ensure_schema=False,
+        use_agent=False,
     )
 
 

@@ -13,7 +13,7 @@
 
 **Рефлекс** принимает обращение, крутит одного агента, рисует стол и карточку. Справочники не копирует к себе: ходит в мок по HTTP.
 
-Ядро Рефлекса — FastAPI + LangChain `create_agent`. UI — Next.js. Хостинга нет.
+Ядро Рефлекса — FastAPI + LangChain (цикл tools, не Deep Agents). UI — Next.js. Хостинга нет.
 
 ---
 
@@ -136,7 +136,7 @@ graph TB
 
 ### Postgres Рефлекса
 
-- Обращения, хронология, лента чата, пилотный пользователь, чекпоинтер фреймворка.
+- Обращения, хронология, лента чата, пилотный пользователь. Чекпоинтера фреймворка нет.
 - **Статус:** MVP.
 
 ### Langfuse
@@ -152,13 +152,13 @@ graph TB
 |--------|----------------|----------|
 | Есть агент | да, один конфиг `reflex-appeal` | harness |
 | Runtime | `stream` в UI, `invoke` в API; cancel нет | generation |
-| Путь к LLM | LangChain `init_chat_model`, прямой OpenAI-compatible endpoint | harness §6 |
-| Три контура | лента UI / чекпоинтер / Langfuse | harness, data-model |
+| Путь к LLM | LangChain `ChatOpenAI`, прямой OpenAI-compatible endpoint | harness §6 |
+| Три контура | лента UI / `appeals.card` / Langfuse | harness, data-model |
 | Профиль | частично `agent-platform-v1` | harness |
 
 Каталог tools и словарь событий в vision не копируем.
 
-Память одной фразой: лента чата — наши таблицы; контекст агента — чекпоинтер с `thread_id = appeal_id`; отладка — Langfuse. После reload диспетчер читает наши таблицы.
+Память одной фразой: лента чата — наши таблицы; контекст агента — актуальный `card` в Postgres; отладка — Langfuse. После reload диспетчер читает наши таблицы.
 
 ---
 
@@ -222,7 +222,7 @@ jo-selectel-ai-solution-architect/
 | Мок и backend | Python 3.12, uv, FastAPI, uvicorn |
 | Рефлекс DB | PostgreSQL 15+, SQLAlchemy 2 async, Alembic, asyncpg |
 | Мок storage | JSON-файлы в образе (сид маленький, Postgres моку не нужен) |
-| Агент | LangChain `create_agent`, не Deep Agents |
+| Агент | LangChain `bind_tools` + цикл, не Deep Agents |
 | Frontend | Next.js App Router, React, Tailwind 4, shadcn |
 | Стрим | SSE |
 | Observability | Langfuse в compose Рефлекса |
@@ -238,7 +238,7 @@ jo-selectel-ai-solution-architect/
 |---|---------|--------|
 | [ADR-0001](../adrs/0001-two-contours.md) | Два контура, мок первым | Принято |
 | [ADR-0002](../adrs/0002-itsm-dry-run.md) | ITSM write — dry-run в конфиге мока | Принято |
-| [ADR-0003](../adrs/0003-agent-runtime.md) | `create_agent`, привязка в туле, промпты в git | Принято |
+| [ADR-0003](../adrs/0003-agent-runtime.md) | LangChain, привязка в туле, промпты в git | Принято |
 
 ---
 

@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     mock_severholod_url: str
     ping_database: bool = Field(default=True)
     ensure_schema: bool = Field(default=True)
+    use_agent: bool = Field(default=True)
+    agent_timeout_seconds: int = Field(default=90)
     host: str = "0.0.0.0"
     port: int = 8000
 
