@@ -37,7 +37,7 @@ def get_contract(
             tool_payload(
                 status="error",
                 summary=f"contracts недоступен: {exc}",
-                next_actions=["повторить один раз" if count < 2 else "финал dispatch"],
+                next_actions=["повторить один раз" if count < 2 else "исход dispatch"],
             ),
             ensure_ascii=False,
         )
@@ -47,7 +47,7 @@ def get_contract(
             tool_payload(
                 status="error",
                 summary=f"contracts {status}",
-                next_actions=["финал dispatch"] if count >= 2 else ["проверить site_id"],
+                next_actions=["исход dispatch"] if count >= 2 else ["проверить site_id"],
                 result={"body": body},
             ),
             ensure_ascii=False,
@@ -60,7 +60,7 @@ def get_contract(
             tool_payload(
                 status="error",
                 summary="На площадку несколько договоров — выбрать нельзя",
-                next_actions=["финал dispatch"],
+                next_actions=["исход dispatch"],
                 result={"items": items},
             ),
             ensure_ascii=False,

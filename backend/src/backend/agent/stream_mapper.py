@@ -6,28 +6,39 @@ from typing import Any
 
 from langchain_core.messages import AIMessage, BaseMessage
 from langgraph.errors import GraphRecursionError
-from pydantic import ValidationError
-
-from backend.agent.finale import Finale, message_text, parse_finale
 
 logger = logging.getLogger(__name__)
 
 OnEvent = Callable[[dict[str, Any]], Awaitable[None]]
 
 
+def message_text(content: object) -> str:
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts: list[str] = []
+        for block in content:
+            if isinstance(block, dict):
+                if block.get("type") == "reasoning":
+                    continue
+                text = block.get("text")
+                if isinstance(text, str):
+                    parts.append(text)
+            elif block is not None:
+                parts.append(str(block))
+        return "".join(parts)
+    return "" if content is None else str(content)
+
+
 async def map_agent_stream(stream: Any, on_event: OnEvent) -> dict[str, Any]:
     persist: list[dict[str, Any]] = []
     usage: dict[str, int] = {}
-    last_ai = await _consume(stream, on_event, persist, usage)
-    messages_out, structured = await _final_state(stream)
+    await _consume(stream, on_event, persist, usage)
+    messages_out = await _final_messages(stream)
     if usage:
         await on_event({"type": "context_usage", **usage})
-    finale = _as_finale(structured)
-    if finale is None and last_ai is not None:
-        finale = parse_finale(last_ai.content)
     return {
         "messages": messages_out,
-        "structured_response": finale,
         "persist": persist,
     }
 
@@ -37,16 +48,14 @@ async def _consume(
     on_event: OnEvent,
     persist: list[dict[str, Any]],
     usage: dict[str, int],
-) -> AIMessage | None:
-    last_holder: list[AIMessage | None] = [None]
+) -> None:
     try:
         await asyncio.gather(
-            _messages(stream, on_event, persist, usage, last_holder),
+            _messages(stream, on_event, persist, usage),
             _tools(stream, on_event, persist),
         )
     except GraphRecursionError:
         logger.exception("agent stream hit recursion_limit")
-    return last_holder[0]
 
 
 async def _messages(
@@ -54,7 +63,6 @@ async def _messages(
     on_event: OnEvent,
     persist: list[dict[str, Any]],
     usage: dict[str, int],
-    last_holder: list[AIMessage | None],
 ) -> None:
     async for message in stream.messages:
         thought_parts: list[str] = []
@@ -74,7 +82,6 @@ async def _messages(
             await on_event({"type": "message_delta", "delta": delta})
         output = await message.output
         if isinstance(output, AIMessage):
-            last_holder[0] = output
             _merge_usage(usage, getattr(output, "usage_metadata", None))
             text = "".join(text_parts) or message_text(output.content)
             if text and not output.tool_calls:
@@ -99,26 +106,15 @@ async def _tools(stream: Any, on_event: OnEvent, persist: list[dict[str, Any]]) 
         await on_event(finished)
 
 
-async def _final_state(stream: Any) -> tuple[list[Any], Any]:
+async def _final_messages(stream: Any) -> list[Any]:
     try:
         final_state = await stream.output()
     except Exception:
         logger.exception("agent stream output")
-        return [], None
+        return []
     if isinstance(final_state, dict):
-        return list(final_state.get("messages") or []), final_state.get("structured_response")
-    return [], None
-
-
-def _as_finale(raw: object) -> Finale | None:
-    if raw is None:
-        return None
-    if isinstance(raw, Finale):
-        return raw
-    try:
-        return Finale.model_validate(raw)
-    except ValidationError:
-        return None
+        return list(final_state.get("messages") or [])
+    return []
 
 
 def _tool_args(raw: object) -> dict[str, Any]:

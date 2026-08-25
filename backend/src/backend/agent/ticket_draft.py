@@ -1,7 +1,21 @@
 from typing import Any
 
-from backend.agent.card_slots import slot
-from backend.agent.guard import support_clear
+from backend.agent.card_slots import binding_status, slot
+
+
+def support_clear(card: dict[str, Any], outcome: str) -> bool:
+    if binding_status(card, "customer") != "resolved":
+        return False
+    if binding_status(card, "site") != "resolved":
+        return False
+    asset = binding_status(card, "asset")
+    if asset in {"ambiguous", "not_found"}:
+        return False
+    if outcome == "update":
+        return binding_status(card, "history") == "resolved"
+    if outcome == "create":
+        return binding_status(card, "history") != "resolved"
+    return False
 
 
 def build_ticket_draft(card: dict[str, Any], outcome: str) -> dict[str, Any] | None:
