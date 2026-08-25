@@ -1,4 +1,13 @@
-.PHONY: mock mock-test mock-lint
+.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend
+
+env:
+	bash scripts/write-env-from-keychain.sh
+
+up: env
+	docker compose up --build
+
+down:
+	docker compose down
 
 mock:
 	cd mock-severholod && uv run uvicorn mock_severholod.app:app --host 0.0.0.0 --port 8080
@@ -8,3 +17,16 @@ mock-test:
 
 mock-lint:
 	cd mock-severholod && uv run ruff check src tests && uv run ruff format --check src tests
+
+dev-backend:
+	bash scripts/write-env-from-keychain.sh local
+	cd backend && uv run uvicorn backend.app:create_app --factory --host 0.0.0.0 --port 8000
+
+dev-frontend:
+	cd frontend && BACKEND_URL=http://127.0.0.1:8000 pnpm dev --port 3000
+
+test-backend:
+	cd backend && uv run pytest
+
+lint-backend:
+	cd backend && uv run ruff check src tests && uv run ruff format --check src tests
