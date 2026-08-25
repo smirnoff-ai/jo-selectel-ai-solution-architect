@@ -69,7 +69,7 @@ Backend обязан прислать `message_final` после серии `mes
 
 ## 7. Structured output
 
-Финал — короткий объект: outcome, reason, questions, warnings, reply_draft. Код мержит в `card.decision`, затем предохранитель и опционально dry-run. Если модель не вернула поля — исход `dispatch`, карточку не врём успехом.
+Финал — короткий объект: outcome, reason, questions, warnings, reply_draft. Код мержит в `card.decision`, затем предохранитель и опционально dry-run. Исход на стол пишет **предохранитель по карточке**, не доверие к JSON модели. Нет валидного финала — reason «Модель не вернула финал», outcome всё равно из лестницы (create/update/clarify/…). Карточку успехом не врём: статус стола = исход после guard.
 
 ---
 

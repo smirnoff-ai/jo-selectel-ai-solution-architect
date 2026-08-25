@@ -67,6 +67,7 @@ class AppealFacade:
         await self._repo.add_event(
             AppealEvent(appeal_id=appeal.id, type="created", card_snapshot=card),
         )
+        appeal.run_status = "running"
         await self._repo.commit()
         return {"id": appeal.id, "status": appeal.status, "run_status": appeal.run_status}
 
@@ -155,5 +156,6 @@ class AppealFacade:
         await self._repo.add_event(
             AppealEvent(appeal_id=appeal.id, type="dispatcher_reply", card_snapshot=None),
         )
+        appeal.run_status = "running"
         await self._repo.commit()
         return {"id": appeal.id, "run_status": appeal.run_status}
