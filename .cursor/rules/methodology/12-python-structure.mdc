@@ -1,0 +1,15 @@
+---
+alwaysApply: true
+---
+# Python structure (образец для проекта)
+
+Копируется в `.cursor/rules/` проекта. В пакете методологии это не единственный допустимый язык.
+
+- 1 класс = 1 файл, `snake_case`.
+- Функции — tools, CLI, утилиты без state.
+- `__init__.py` пустые; импорты от корня пакета, без `from ..`.
+- Preload / file source — facade, не обязательный repository.
+- PostgreSQL — repository над ORM.
+- Pydantic на границах модулей; секреты в Settings как SecretStr.
+- `os.environ.get` в прикладном коде запрещён — только Settings.
+- 1 tool = 1 файл, тонкая обёртка над facade; аргументы — явные id.

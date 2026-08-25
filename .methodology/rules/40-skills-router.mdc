@@ -1,0 +1,112 @@
+---
+description: Таблица маршрутизации skills — тип работы → обязательный skill для применения. Читать перед началом каждой Task.
+alwaysApply: true
+---
+
+# Skills Router
+
+Перед началом реализации Task — проверь таблицу и прочитай нужные skills через Read tool.
+
+## Как использовать
+
+1. Определить тип работы в Task.
+2. Найти в таблице соответствующий skill.
+3. Прочитать SKILL.md через `Read` tool.
+4. Следовать инструкциям skill при реализации.
+
+**Важно:** если skill найден — его нужно прочитать и применить, а не просто упомянуть. Если `Read` по пути из таблицы не нашёл файл — **стоп**: skill не установлен. Поставь его (см. ниже) и только потом продолжай. Не заменять известный skill «здравым смыслом».
+
+Если Task касается внешней библиотеки, SDK, CLI или облачного API — свериться с документацией через MCP до написания кода. Узкий MCP (документация фреймворка агента, observability) важнее общего. Если узкий недоступен — общий каталог документации (Context7 или аналог). Если MCP недоступен — явно написать это в plan.md.
+
+MCP в этом правиле — про агента-разработчика. Обёртка продуктовых tools в MCP — развилка `agent-harness.md` §9.1.
+
+---
+
+## Таблица: тип работы → skill
+
+### Python / Backend
+
+| Тип работы | Skill | Путь |
+|-----------|-------|------|
+| Создание FastAPI-сервиса, роутеры, DI, схемы | `fastapi-templates` | `.agents/skills/fastapi-templates/SKILL.md` |
+| Настройка Python-проекта (uv, ruff, ty) | `modern-python` | `.agents/skills/modern-python/SKILL.md` |
+| Управление пакетами через uv | `uv-package-manager` | `.agents/skills/uv-package-manager/SKILL.md` |
+| Написание pytest-тестов, фикстуры, моки | `python-testing-patterns` | `.agents/skills/python-testing-patterns/SKILL.md` |
+| Паттерны организации кода, SOLID, SoC | `python-design-patterns` | `.agents/skills/python-design-patterns/SKILL.md` |
+| Опасные API-паттерны, error-prone конфигурации | `sharp-edges` | `.agents/skills/sharp-edges/SKILL.md` |
+
+### База данных
+
+| Тип работы | Skill | Путь |
+|-----------|-------|------|
+| Проектирование PostgreSQL-схемы | `postgresql-table-design` | `.agents/skills/postgresql-table-design/SKILL.md` |
+
+### API
+
+| Тип работы | Skill | Путь |
+|-----------|-------|------|
+| Проектирование API-контрактов, REST-конвенции | `api-design-principles` | `.agents/skills/api-design-principles/SKILL.md` |
+
+### Frontend
+
+| Тип работы | Skill | Путь |
+|-----------|-------|------|
+| Next.js App Router, Server Components, SSG | `nextjs-app-router-patterns` | `.agents/skills/nextjs-app-router-patterns/SKILL.md` |
+| React/Next.js производительность, оптимизация | `vercel-react-best-practices` | `.agents/skills/vercel-react-best-practices/SKILL.md` |
+| shadcn/ui компоненты, registry | `shadcn` | `.agents/skills/shadcn/SKILL.md` |
+| UI-дизайн, визуальное качество | `frontend-design` | `.agents/skills/frontend-design/SKILL.md` |
+| Лендинги, конверсия, CTA | `landing-page-design` | `.agents/skills/landing-page-design/SKILL.md` |
+| Копирайтинг для лендингов | `landing-page-copywriter` | `.agents/skills/landing-page-copywriter/SKILL.md` |
+| Ревью UI, best practices дизайна | `web-design-guidelines` | `.agents/skills/web-design-guidelines/SKILL.md` |
+
+### Агент и observability
+
+| Тип работы | Skill | Путь |
+|-----------|-------|------|
+| Дизайн tools, схем ответа, action space | `agent-harness-construction` | `.agents/skills/agent-harness-construction/SKILL.md` |
+| Создание project skills | `skill-creator` | `.agents/skills/skill-creator/SKILL.md` |
+| Observability / datasets / eval SDK | `langfuse` (если выбран Langfuse) | `.agents/skills/langfuse/SKILL.md` |
+| Архитектура Deep Agents | `deepagents-architecture` — только если каркас выбран | `.agents/skills/deepagents-architecture/SKILL.md` |
+| Реализация Deep Agents | `deepagents-implementation` — только если каркас выбран | `.agents/skills/deepagents-implementation/SKILL.md` |
+
+### Демо / артефакты
+
+| Тип работы | Skill | Путь |
+|-----------|-------|------|
+| Demo-видео спринта или версии, скринкаст фичи с озвучкой | `demo-screencast` | `.agents/skills/demo-screencast/SKILL.md` |
+
+Когда читать: закрытие спринта с runtime; закрытие версии; явная просьба «запиши демо / скринкаст». Прочитать `SKILL.md` и `references/narrate-pattern.md` **до** написания сценария. Не снимать ролик в обход skill, если он установлен.
+
+### Инфраструктура
+
+| Тип работы | Skill | Путь |
+|-----------|-------|------|
+| Docker, контейнеры, multi-stage, health checks | `docker-expert` | `.agents/skills/docker-expert/SKILL.md` |
+| GitHub Actions CI/CD | `github-actions-templates` | `.agents/skills/github-actions-templates/SKILL.md` |
+
+---
+
+## Установка в проект
+
+Канон в проекте: `.agents/skills/<name>/SKILL.md`. Cursor также видит `.cursor/skills/`.
+
+Поставляемые skills лежат в `.methodology/skills/` (как rules в `.methodology/rules/`). При установке:
+
+```bash
+mkdir -p .agents/skills
+cp -R .methodology/skills/. .agents/skills/
+```
+
+Если skill есть в `.methodology/skills/`, а в `.agents/skills/` нет — сначала этот шаг, потом запись или реализация.
+
+Остальные имена из таблицы (стек, не входящие в пакет) — из `~/.agents/skills/`, `~/.cursor/skills/` или другого репозитория. Не вендорить весь домашний каталог. Условные строки (`langfuse`, `deepagents-*`) — только если каркас выбран.
+
+## Если skill из таблицы не на диске
+
+Это не «работы нет в методологии». Это дыра в установке.
+
+1. Есть ли он в `.methodology/skills/<name>/` — скопировать в `.agents/skills/` и повторить `Read`.
+2. Искать тот же `<name>` в `~/.agents/skills/`, `~/.cursor/skills/`, `~/.codex/skills/`.
+3. Найти — скопировать в `.agents/skills/<name>/` и повторить `Read`.
+4. Не найти — стоп. Сказать, какого skill не хватает и откуда его взять. Реализацию не начинать.
+5. «Принципы здравого смысла» и создание нового skill — только если в таблице **нет строки** на этот тип работы. Тогда написать об этом в `plan.md`. Новый skill: `skill-creator`.
