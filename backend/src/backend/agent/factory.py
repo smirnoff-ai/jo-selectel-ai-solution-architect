@@ -1,10 +1,8 @@
 from typing import Any
 
 from langchain.agents import create_agent
-from langchain.agents.structured_output import ToolStrategy
 from langchain_openrouter import ChatOpenRouter
 
-from backend.agent.finale import Finale
 from backend.agent.system_prompt import load_system_prompt
 from backend.agent.tools.calculate_tool import calculate
 from backend.agent.tools.get_contract_tool import get_contract
@@ -42,6 +40,5 @@ def build_agent(settings: Settings) -> Any:
         model=build_model(settings),
         tools=TOOLS,
         system_prompt=load_system_prompt(),
-        response_format=ToolStrategy(Finale),
         name="reflex-appeal",
     )

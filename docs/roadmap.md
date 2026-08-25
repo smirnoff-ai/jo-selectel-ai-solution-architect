@@ -1,7 +1,7 @@
 # Roadmap — Рефлекс
 
 > **Vision:** [concept/vision.md](concept/vision.md)
-> **Последнее обновление:** 2026-08-25
+> **Последнее обновление:** 2026-08-26
 
 ---
 
@@ -44,7 +44,7 @@
 | 05 | [dispatcher-ui](sprints/sprint-05-dispatcher-ui/README.md) | Стол, журнал, форма, карточка, чат по ux-logic | Done |
 | 06 | [accept-s1-s4](sprints/sprint-06-accept-s1-s4/README.md) | Сценарии пакета, README, журнал AI, demo | Done |
 | 07 | [live-agent](sprints/sprint-07-ui-wishes/README.md) | `create_agent`, стрим, Langfuse thread, без `complete_catalog`, окно обращения | Done |
-| 08 | ui-пульт | Визуал логина, стола, журнала | Planned |
+| 08 | [agent-voice](sprints/sprint-08-agent-voice/README.md) | Отчёт модели без Finale, без guard, широкий поиск заявок | Done |
 
 ---
 

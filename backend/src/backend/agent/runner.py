@@ -1,20 +1,12 @@
 import asyncio
-import json
 import logging
 from typing import Any
 
-from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
-from backend.agent.dispatcher_report import (
-    build_dispatcher_report,
-    persist_has_message_final,
-    tool_names_from_persist,
-)
-from backend.agent.factory import build_agent, build_model
-from backend.agent.finale import Finale
-from backend.agent.guard import apply_guard, desk_status
+from backend.agent.desk_status import desk_status
+from backend.agent.factory import build_agent
 from backend.agent.itsm_tryon import try_itsm
 from backend.agent.langfuse_trace import flush_callback, make_callback, traced_invoke
 from backend.agent.mock_http import MockHttp
@@ -66,7 +58,6 @@ class AgentRunner:
                 set_run_context(ctx)
                 result: dict[str, Any] = {
                     "messages": [],
-                    "structured_response": None,
                     "persist": [],
                 }
                 try:
@@ -79,12 +70,8 @@ class AgentRunner:
                 except Exception:
                     logger.exception("agent invoke failed")
                 await self._emit_trace(channel, repo, appeal, result, ctx)
-                finale = _finale_from(result)
-                if finale is None:
-                    finale = await _finale_from_card(self._settings, ctx.card)
-                decided = apply_guard(ctx.card, finale, ctx.catalog_errors)
-                _write_decision(ctx.card, decided, mock)
-                await _commit_finish(channel, repo, appeal, ctx, result, decided)
+                outcome = apply_card_decision(ctx.card, mock)
+                await _commit_finish(channel, repo, appeal, ctx, outcome)
         except Exception:
             logger.exception("agent run failed")
             await self._fail(appeal_id, channel, "Прогон упал")
@@ -181,24 +168,19 @@ class AgentRunner:
         )
 
 
-def _write_decision(card: dict[str, Any], decided: Finale, mock: MockHttp) -> None:
-    card.setdefault("decision", {})
-    card["decision"].update(
-        {
-            "outcome": decided.outcome,
-            "reason": decided.reason,
-            "grounds": decided.grounds,
-            "questions": decided.questions,
-            "warnings": decided.warnings,
-            "reply_draft": decided.reply_draft,
-        }
-    )
-    if decided.outcome in {"create", "update"}:
-        try_itsm(mock, card, decided.outcome)
-        return
-    card["decision"]["ticket_draft"] = None
-    card["decision"]["itsm_dry_run"] = None
-    card["decision"]["auto_in_prod"] = False
+def apply_card_decision(card: dict[str, Any], mock: MockHttp) -> str:
+    decision = card.setdefault("decision", {})
+    if not isinstance(decision, dict):
+        card["decision"] = {}
+        decision = card["decision"]
+    outcome = str(decision.get("outcome") or "dispatch")
+    if outcome in {"create", "update"}:
+        try_itsm(mock, card, outcome)
+        return outcome
+    decision["ticket_draft"] = None
+    decision["itsm_dry_run"] = None
+    decision["auto_in_prod"] = False
+    return outcome
 
 
 async def _commit_finish(
@@ -206,45 +188,26 @@ async def _commit_finish(
     repo: AppealRepository,
     appeal: Appeal,
     ctx: RunContext,
-    result: dict[str, Any],
-    decided: Finale,
+    outcome: str,
 ) -> None:
     appeal.card = ctx.card
     flag_modified(appeal, "card")
-    appeal.status = desk_status(decided.outcome)
+    appeal.status = desk_status(outcome)
     appeal.run_status = "idle"
-    report = await _persist_report(repo, appeal.id, ctx.card, result.get("persist"))
     await repo.add_event(
         AppealEvent(appeal_id=appeal.id, type="run_finished", card_snapshot=ctx.card)
     )
     await repo.commit()
     await channel.emit({"type": "card_updated", "card": ctx.card})
-    if report:
-        await channel.emit({"type": "message_final", "text": report})
     await channel.emit(
         {
             "type": "run_finished",
             "run_status": "idle",
-            "outcome": decided.outcome,
+            "outcome": outcome,
             "status": appeal.status,
-            "auto_in_prod": bool(ctx.card["decision"].get("auto_in_prod")),
+            "auto_in_prod": bool((ctx.card.get("decision") or {}).get("auto_in_prod")),
         }
     )
-
-
-async def _persist_report(
-    repo: AppealRepository,
-    appeal_id: int,
-    card: dict[str, Any],
-    persist: object,
-) -> str | None:
-    if persist_has_message_final(persist):
-        return None
-    report = build_dispatcher_report(card, tool_names=tool_names_from_persist(persist))
-    await repo.add_message(
-        AppealMessage(appeal_id=appeal_id, author="agent", kind="message", body={"text": report})
-    )
-    return report
 
 
 async def _persist_event(
@@ -300,34 +263,3 @@ async def _note(
     await repo.add_message(AppealMessage(appeal_id=appeal_id, author="agent", kind=kind, body=body))
     if emit:
         await channel.emit({"type": event or kind, **body} if event else {"type": kind, **body})
-
-
-async def _finale_from_card(settings: Settings, card: dict[str, Any]) -> Finale | None:
-    model = build_model(settings).with_structured_output(Finale)
-    payload = (
-        "Карточка уже собрана тулами. Верни только Finale, без тулов.\n"
-        f"{json.dumps(card, ensure_ascii=False)[:6000]}"
-    )
-    try:
-        raw = await model.ainvoke(payload)
-    except Exception:
-        logger.exception("finale fallback")
-        return None
-    if isinstance(raw, Finale):
-        return raw
-    try:
-        return Finale.model_validate(raw)
-    except ValidationError:
-        return None
-
-
-def _finale_from(result: dict[str, Any]) -> Finale | None:
-    raw = result.get("structured_response")
-    if isinstance(raw, Finale):
-        return raw
-    if raw is None:
-        return None
-    try:
-        return Finale.model_validate(raw)
-    except ValidationError:
-        return None

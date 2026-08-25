@@ -178,7 +178,10 @@ class DecisionPatch(BaseModel):
 
     outcome: Outcome | None = Field(default=None, description="Один исход разбора")
     reason: str | None = Field(default=None, description="Почему этот исход")
-    grounds: list[str] | None = Field(default=None, description="Какие слоты держат исход")
+    grounds: list[str] | None = Field(
+        default=None,
+        description="Фразы модели, на каком основании исход, не пути слотов",
+    )
     questions: list[dict[str, Any]] | None = Field(default=None, description="Вопросы диспетчеру")
     warnings: list[dict[str, Any]] | None = Field(default=None, description="Предупреждения")
     reply_draft: str | None = Field(
