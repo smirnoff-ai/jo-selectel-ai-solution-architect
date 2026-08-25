@@ -5,7 +5,9 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from backend.db import create_engine, create_schema, session_factory
 from backend.db_ping import ping_database
+from backend.routers.appeals import router as appeals_router
 from backend.routers.auth import router as auth_router
 from backend.routers.health import router as health_router
 from backend.settings import Settings, get_settings
@@ -21,9 +23,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         app.state.settings = resolved
+        engine = create_engine(resolved.database_url)
+        app.state.engine = engine
+        app.state.session_factory = session_factory(engine)
         if resolved.ping_database:
             await ping_database(resolved.database_url)
+        if resolved.ensure_schema:
+            await create_schema(engine)
         yield
+        await engine.dispose()
 
     app = FastAPI(title="reflex", lifespan=lifespan)
 
@@ -38,4 +46,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health_router)
     app.include_router(auth_router)
+    app.include_router(appeals_router)
     return app

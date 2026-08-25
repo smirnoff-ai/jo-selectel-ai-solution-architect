@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     dispatcher_password: SecretStr
     mock_severholod_url: str
     ping_database: bool = Field(default=True)
+    ensure_schema: bool = Field(default=True)
     host: str = "0.0.0.0"
     port: int = 8000
 
