@@ -64,7 +64,7 @@
 | [card.md](card.md) | JSON карточки обращения: факты, привязки, решение |
 | [harness.md](harness.md) | Агент разбора: стейт, тулы, финал |
 | [prompts/system.md](prompts/system.md) | Системный промпт |
-| [schemas/patch_facts.py](schemas/patch_facts.py) | Pydantic входа `patch_facts` |
+| [schemas/update_card.py](schemas/update_card.py) | Pydantic входа `update_card` |
 | [regulations.md](regulations.md) | Регламент разбора — лестница исходов и формулы пилота |
 | [scenarios.md](scenarios.md) | Датасет приёмки: S1–S4, один прогон |
 

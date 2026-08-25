@@ -108,8 +108,9 @@ def binding(card: dict[str, Any], name: str) -> dict[str, Any]:
     return (card.get("facts") or {}).get(name, {}).get("binding") or {}
 
 
-def wait_finished(client: httpx.Client, appeal_id: int) -> dict[str, Any]:
+def wait_finished(client: httpx.Client, appeal_id: int) -> tuple[dict[str, Any], list[str]]:
     finished: dict[str, Any] = {}
+    tools: list[str] = []
     with client.stream("GET", f"/api/v1/appeals/{appeal_id}/stream", timeout=120.0) as stream:
         event = "message"
         data_lines: list[str] = []
@@ -117,6 +118,10 @@ def wait_finished(client: httpx.Client, appeal_id: int) -> dict[str, Any]:
             if raw == "":
                 if data_lines:
                     payload = json.loads("\n".join(data_lines))
+                    if event == "tool_call":
+                        name = payload.get("name")
+                        if isinstance(name, str) and name:
+                            tools.append(name)
                     if event == "run_finished":
                         finished = payload
                         break
@@ -127,7 +132,31 @@ def wait_finished(client: httpx.Client, appeal_id: int) -> dict[str, Any]:
                 event = raw.split(":", 1)[1].strip()
             elif raw.startswith("data:"):
                 data_lines.append(raw.split(":", 1)[1].lstrip())
-    return finished
+    return finished, tools
+
+
+def tools_from_messages(items: list[dict[str, Any]]) -> list[str]:
+    names: list[str] = []
+    for item in items:
+        if item.get("kind") != "tool_call":
+            continue
+        body = item.get("body") or {}
+        name = body.get("name")
+        if isinstance(name, str) and name:
+            names.append(name)
+    return names
+
+
+def check_tools(names: list[str], outcome: str | None) -> list[str]:
+    searches = [index for index, name in enumerate(names) if name.startswith("search_")]
+    if not searches:
+        return ["no search_* in trace"]
+    first = searches[0]
+    if not any(name == "update_card" for name in names[first + 1 :]):
+        return ["no update_card after first search_*"]
+    if outcome in {"create", "update"} and "calculate" not in names:
+        return ["no calculate on create/update"]
+    return []
 
 
 def check(card: dict[str, Any], expect: dict[str, Any]) -> list[str]:
@@ -176,15 +205,21 @@ def main() -> int:
             created = client.post("/api/v1/appeals", json=scenario["intake"])
             created.raise_for_status()
             appeal_id = int(created.json()["id"])
-            wait_finished(client, appeal_id)
+            _finished, stream_tools = wait_finished(client, appeal_id)
             detail = client.get(f"/api/v1/appeals/{appeal_id}").json()
+            messages = client.get(f"/api/v1/appeals/{appeal_id}/messages").json()
             card = detail["card"]
-            errors = check(card, scenario["expect"])
+            tool_names = stream_tools or tools_from_messages(messages.get("items") or [])
+            errors = check(card, scenario["expect"]) + check_tools(
+                tool_names,
+                (card.get("decision") or {}).get("outcome"),
+            )
             row = {
                 "id": scenario["id"],
                 "appeal_id": appeal_id,
                 "status": detail.get("status"),
                 "outcome": (card.get("decision") or {}).get("outcome"),
+                "tools": tool_names,
                 "errors": errors,
             }
             report.append(row)

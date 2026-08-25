@@ -2,58 +2,31 @@ from datetime import datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from backend.agent.card_slots import binding_status, slot
-
 STEPS = ("low", "medium", "high", "critical")
 
 
-def recalc(card: dict[str, Any]) -> None:
-    site_ok = binding_status(card, "site") == "resolved"
-    asset_ok = binding_status(card, "asset") == "resolved"
-    history_ok = binding_status(card, "history") == "resolved"
-    if not site_ok and not asset_ok:
-        card["calculation"] = {
-            "branch": "none",
-            "status": "blocked",
-            "priority": {
-                "value": None,
-                "formula": None,
-                "arguments": {},
-                "missing": ["site_or_asset"],
-            },
-            "sla": {"code": None, "formula": None, "arguments": {}, "missing": ["contract"]},
-            "deadline": {
-                "at": None,
-                "timezone": None,
-                "formula": None,
-                "arguments": {},
-                "missing": ["contract"],
-            },
-        }
-        return
-
-    branch = "update" if history_ok else "create"
-    problem = slot(card, "problem").get("value") or ""
-    symptoms = f"{slot(card, 'symptoms').get('value') or ''} {problem}"
-    intake = card["intake"]["text"]
-    blob = f"{symptoms} {intake}".lower()
-    criticality = _asset_criticality(card) if asset_ok else None
-    priority, formula, arguments = _priority(criticality, blob, card if history_ok else None)
-
-    contract = card.get("contract") or {}
-    sla_code = contract.get("response_sla") if contract.get("status") == "resolved" else None
-    timezone = _timezone(card)
-    received = datetime.fromisoformat(card["intake"]["received_at"])
+def compute_calculation(
+    *,
+    received_at: datetime,
+    timezone: str | None,
+    response_sla: str | None,
+    service_window: str | None,
+    asset_criticality: str | None,
+    symptoms_text: str,
+    open_ticket_priority: str | None,
+) -> dict[str, Any]:
+    blob = symptoms_text.lower()
+    priority, formula, arguments = _priority(asset_criticality, blob, open_ticket_priority)
     deadline_at, sla_formula, deadline_args, missing = _deadline(
-        sla_code,
-        received,
+        response_sla,
+        received_at,
         timezone,
-        contract.get("service_window"),
+        service_window,
     )
-
-    card["calculation"] = {
-        "branch": branch,
-        "status": "computed" if sla_code else "partial",
+    sla_ok = bool(response_sla) and not missing
+    return {
+        "branch": "update" if open_ticket_priority else "create",
+        "status": "computed" if sla_ok else "partial",
         "priority": {
             "value": priority,
             "formula": formula,
@@ -61,12 +34,10 @@ def recalc(card: dict[str, Any]) -> None:
             "missing": [],
         },
         "sla": {
-            "code": sla_code,
-            "formula": "код договора выбранной площадки" if sla_code else None,
-            "arguments": {"contract_id": contract.get("id"), "plan": contract.get("plan")}
-            if sla_code
-            else {},
-            "missing": [] if sla_code else ["contract"],
+            "code": response_sla,
+            "formula": "код договора выбранной площадки" if response_sla else None,
+            "arguments": {"response_sla": response_sla} if response_sla else {},
+            "missing": [] if response_sla else ["contract"],
         },
         "deadline": {
             "at": deadline_at,
@@ -78,20 +49,10 @@ def recalc(card: dict[str, Any]) -> None:
     }
 
 
-def _asset_criticality(card: dict[str, Any]) -> str | None:
-    for item in slot(card, "asset").get("evidences") or []:
-        record = item.get("record") or {}
-        if record.get("id") and item.get("source") == "eam":
-            break
-    # criticality is not stored on card; caller of search keeps it in result only.
-    # We stash last asset criticality on card facts.asset when resolving.
-    return card["facts"]["asset"].get("criticality")
-
-
 def _priority(
     criticality: str | None,
     blob: str,
-    card_for_ticket: dict[str, Any] | None,
+    ticket_priority: str | None,
 ) -> tuple[str, str, dict[str, Any]]:
     if criticality == "high":
         base = "high"
@@ -101,17 +62,14 @@ def _priority(
         base = "low"
 
     bump = "+8" in blob or "+ 8" in blob or "растёт" in blob or "не запускается" in blob
-    # also numeric 8,3 / 8.3
     if "8,3" in blob or "8.3" in blob or "+8" in blob:
         bump = True
     value = _step_up(base) if bump else base
 
     arguments: dict[str, Any] = {"asset_criticality": criticality, "symptoms": blob[:80]}
-    if card_for_ticket is not None:
-        ticket_priority = card_for_ticket["facts"]["history"].get("ticket_priority")
-        if ticket_priority in STEPS:
-            value = _max_step(value, ticket_priority)
-            arguments["ticket_priority"] = ticket_priority
+    if ticket_priority in STEPS:
+        value = _max_step(value, ticket_priority)
+        arguments["ticket_priority"] = ticket_priority
 
     return (
         value,
@@ -185,11 +143,7 @@ def _add_business_hours(start: datetime, hours: int) -> datetime:
 
 
 def _next_business_morning(local: datetime) -> datetime:
-    cursor = local
-    if cursor.weekday() < 5 and cursor.hour < 18:
-        nxt = cursor + timedelta(days=1)
-    else:
-        nxt = cursor + timedelta(days=1)
+    nxt = local + timedelta(days=1)
     while nxt.weekday() >= 5:
         nxt += timedelta(days=1)
     return _at_hour(nxt, 9)
@@ -199,10 +153,6 @@ def _at_hour(moment: datetime, hour: int) -> datetime:
     return moment.replace(hour=hour, minute=0, second=0, microsecond=0)
 
 
-def _timezone(card: dict[str, Any]) -> str | None:
-    return card["facts"]["site"].get("timezone") or "Europe/Moscow"
-
-
 def _step_up(value: str) -> str:
     idx = STEPS.index(value)
     return STEPS[min(idx + 1, len(STEPS) - 1)]
@@ -210,22 +160,3 @@ def _step_up(value: str) -> str:
 
 def _max_step(left: str, right: str) -> str:
     return STEPS[max(STEPS.index(left), STEPS.index(right))]
-
-
-def stash_asset_criticality(card: dict[str, Any], items: list[dict[str, Any]]) -> None:
-    if len(items) == 1:
-        card["facts"]["asset"]["criticality"] = items[0].get("criticality")
-        card["facts"]["site"]["timezone"] = card["facts"]["site"].get("timezone")
-
-
-def stash_site_timezone(card: dict[str, Any], items: list[dict[str, Any]]) -> None:
-    if len(items) == 1:
-        card["facts"]["site"]["timezone"] = items[0].get("timezone")
-
-
-def stash_ticket_priority(card: dict[str, Any], items: list[dict[str, Any]]) -> None:
-    open_items = [
-        row for row in items if row.get("status") in {"new", "in_progress", "waiting_for_customer"}
-    ]
-    if len(open_items) == 1:
-        card["facts"]["history"]["ticket_priority"] = open_items[0].get("priority")

@@ -13,7 +13,7 @@
 
 Один прогон разбирает одно обращение: факты, поиски, один исход, реплика в чат.
 
-**Делает:** упоминания, поиск 0/1/N, договор, открытые заявки, расчёт SLA кодом, финал модели, примерка ITSM кодом после прогона.
+**Делает:** упоминания, поиск справочников (только чтение), запись карточки через `update_card`, расчёт SLA отдельным `calculate`, финал модели, примерка ITSM кодом после прогона.
 
 **Не делает:** письмо клиенту, назначение группы, склейка ниток, тул `commit_decision`, create_ticket из модели.
 
@@ -27,11 +27,12 @@
 flowchart TB
   Intake[Приём] --> Agent[Агент]
   Reply[Реплика] --> Agent
-  Agent --> Patch[patch_facts]
+  Agent --> Write[update_card]
   Agent --> Sites[search_sites]
   Agent --> Assets[search_assets]
   Agent --> Tickets[search_tickets]
   Agent --> Contract[get_contract]
+  Agent --> Calc[calculate]
   Agent --> Final[Финал]
   Final --> Complete[Добор справочников кодом]
   Complete --> Guard[Предохранитель]
@@ -50,7 +51,7 @@ flowchart TB
 
 | Слой | Что лежит |
 |------|-----------|
-| Рантайм | LangChain `ChatOpenAI.bind_tools`, цикл `run_tool_loop`, SSE |
+| Рантайм | LangChain `create_agent` + `ChatOpenRouter`, `astream_events` v3, SSE |
 | Этот harness | system, тулы, расчёт, предохранитель |
 
 Путь: `backend/` когда появится каркас. Чужих агентов нет.
@@ -74,7 +75,7 @@ flowchart TB
 
 Старт без `appeal_id` невозможен. Карточка живёт в Postgres, не в чекпоинтере LangGraph. Первый user — собранный вход, не сырой JSON. В ход — актуальный `card`.
 
-`create_agent` на живом OpenRouter зависал (~90 с, SSL / astream). Пилот крутит явный цикл: до 8 шагов, те же пять тулов, финал парсим из текста. К `create_agent` не возвращаемся без отдельного доказательства, что стрим живой.
+Прогон — `create_agent` без чекпоинтера LangGraph: карточка и лента в Postgres. Стрим — `astream_events(..., version="v3")`. Модель — `ChatOpenRouter`, reasoning `effort` (не бюджет `max_tokens` мысли). Финал — `response_format=ToolStrategy(Finale)` (`structured_response`); запасной разбор JSON из текста. После guard, если модель не дала markdown, runner пишет `message_final` из карточки. `thread_id` в config только для трассы Langfuse, не для памяти графа. Обрыв стрима или пустой финал — тонкий guard по уже накопленной `card` (без тихого добора справочников). Тихого `complete_catalog` нет.
 
 ---
 
@@ -82,7 +83,7 @@ flowchart TB
 
 | Вопрос | Решение |
 |--------|---------|
-| SDK | LangChain `ChatOpenAI` |
+| SDK | LangChain `ChatOpenRouter` (`langchain-openrouter`) |
 | Gateway | прямой OpenAI-compatible, LiteLLM нет |
 | Где модели | внешний API |
 | Каталог в UI | нет |
@@ -111,19 +112,20 @@ flowchart TB
 
 ## 9. Каталог инструментов
 
-Пять тулов. Форма ответа: `status`, `summary`, `next_actions`, `artifacts`, `result` — как в пакете заказчика.
+Шесть тулов. Форма ответа: `status`, `summary`, `next_actions`, `artifacts`, `result` — как в пакете заказчика.
 
 | Tool | Кто | Аргументы | Зачем | Типичная ошибка |
 |------|-----|-----------|-------|-----------------|
-| `patch_facts` | агент | PatchFactsInput | упоминания, без binding | fact без цитаты |
-| `search_sites` | агент | как GET sites | клиент и площадки | пустой фильтр; q=Андрей пусто |
-| `search_assets` | агент | как GET assets | оборудование | два ХУ-17 не выбирать |
-| `search_tickets` | агент | как GET tickets | открытые заявки | нечего подставить |
-| `get_contract` | агент | site_id или resolved площадка | договор | площадка не resolved |
+| `update_card` | агент | UpdateCardInput | единственная запись карточки | fact без цитаты; id не из поиска |
+| `search_sites` | агент | как GET sites | клиент и площадки, только чтение | пустой фильтр; имя человека вместо организации |
+| `search_assets` | агент | как GET assets | оборудование, только чтение | несколько совпадений — выбрать самому |
+| `search_tickets` | агент | как GET tickets, обязателен asset_id | открытые заявки, только чтение | вызов без актива |
+| `get_contract` | агент | обязательный site_id | договор, только чтение | ждать авторасчёт |
+| `calculate` | агент | критичность, симптомы, срок, пояс | приоритет и дедлайн | считать цифры самому |
 
-Правило 0/1/N пишет **код тула**. Схема `patch_facts` — [schemas/patch_facts.py](../requirements/severholod/schemas/patch_facts.py).
+Привязку на карточке пишет агент через `update_card`. Схема — [schemas/update_card.py](../requirements/severholod/schemas/update_card.py). `card_updated` только после записи.
 
-После цикла тулов runner вызывает `complete_catalog`: если модель не сходила в CRM/EAM/ITSM, код повторяет поиски по mention и тем же правилам 0/1/N (адрес в тексте сужает две площадки; тикет только при resolved активе). Угадывать город без токена адреса нельзя.
+Тихого добора справочников после цикла нет: если модель не вызвала поиск, слот остаётся пустым, финал без опоры не может быть `create`/`update`. Угадывать город или id без ответа тула нельзя.
 
 ### 9.1. MCP
 
@@ -137,7 +139,7 @@ In-process обёртки над HTTP. Второй потребитель по�
 |--------|-----|-----------|
 | Лента UI | `appeal_messages` | backend по стриму |
 | Контекст агента | `appeals.card` + лента сообщений | тулы и runner |
-| Observability | Langfuse | ручной `Langfuse().trace` (CallbackHandler 2.x ломается на LangChain 1) |
+| Observability | Langfuse | SDK + self-host v4 (`langfuse.langchain.CallbackHandler`); session = `appeal_id` |
 
 Todos, VFS, память о диспетчере между обращениями — нет. Сжатие — только если фреймворк сам.
 

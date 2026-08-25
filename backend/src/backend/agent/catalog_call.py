@@ -2,7 +2,6 @@ import json
 from collections.abc import Callable
 from typing import Any
 
-from backend.agent.calculation import recalc
 from backend.agent.run_context import RunContext
 from backend.agent.tool_payload import tool_payload
 
@@ -17,7 +16,6 @@ def catalog_get(
     catalog: str,
     path: str,
     params: dict[str, Any],
-    on_items: Callable[[dict[str, Any], list[dict[str, Any]]], list[str]],
     empty_summary: str,
     found_summary: Callable[[list[dict[str, Any]]], str],
     next_on_empty: list[str],
@@ -29,7 +27,7 @@ def catalog_get(
             tool_payload(
                 status="error",
                 summary="Нужен хотя бы один фильтр",
-                next_actions=["передать q или id"],
+                next_actions=["передать запрос, название, адрес или идентификатор"],
             ),
             ensure_ascii=False,
         )
@@ -58,16 +56,13 @@ def catalog_get(
             ensure_ascii=False,
         )
     items = list(body.get("items") or []) if isinstance(body, dict) else []
-    updated = on_items(ctx.card, items)
-    recalc(ctx.card)
-    ctx.snapshot()
+    ctx.remember_ids(items)
     if not items:
         return json.dumps(
             tool_payload(
                 status="warning",
                 summary=empty_summary,
                 next_actions=next_on_empty,
-                artifacts={"updated": updated},
                 result={"items": items, "query": clean},
             ),
             ensure_ascii=False,
@@ -77,7 +72,6 @@ def catalog_get(
             status="success",
             summary=found_summary(items),
             next_actions=next_on_found,
-            artifacts={"updated": updated},
             result={"items": items, "query": clean},
         ),
         ensure_ascii=False,

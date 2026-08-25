@@ -141,7 +141,7 @@ flowchart LR
 
 ## Деплой — локально
 
-`make up` / корневой `docker-compose`: `mock-severholod`, `backend`, `frontend`, `postgres`, `langfuse`. Рефлекс не стартует без `OPENAI_*` и `LANGFUSE_*`. Мок секретов не требует.
+`make up` / корневой `docker-compose`: `mock-severholod`, `backend`, `frontend`, `postgres`, Langfuse v4 (`langfuse` + worker, ClickHouse, Redis, MinIO, свой Postgres). UI Langfuse — `:3001`. Рефлекс не стартует без `OPENAI_*` и `LANGFUSE_*`. Мок секретов не требует.
 
 ## Деплой — production
 

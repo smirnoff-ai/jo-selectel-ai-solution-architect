@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 
@@ -160,15 +159,19 @@ export function JournalView() {
             </TableHeader>
             <TableBody>
               {items.map((row) => (
-                <TableRow key={row.id}>
-                  <TableCell>
-                    <Link
-                      href={`/appeals/${row.id}`}
-                      className="underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {formatDateTime(row.received_at)}
-                    </Link>
-                  </TableCell>
+                <TableRow
+                  key={row.id}
+                  tabIndex={0}
+                  className="cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  onClick={() => router.push(`/appeals/${row.id}`)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" || event.key === " ") {
+                      event.preventDefault();
+                      router.push(`/appeals/${row.id}`);
+                    }
+                  }}
+                >
+                  <TableCell>{formatDateTime(row.received_at)}</TableCell>
                   <TableCell>{CHANNEL_LABEL[row.channel]}</TableCell>
                   <TableCell>{row.sender || "не указан"}</TableCell>
                   <TableCell className="max-w-xs truncate">{row.text_preview}</TableCell>
