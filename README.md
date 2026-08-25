@@ -17,6 +17,7 @@
 | [Названия — выдуманные](#названия--выдуманные) | Рефлекс, СеверХолод, mock |
 | [Как запустить](#как-запустить) | Docker, ключ, `make up` / `make accept` |
 | [Структура репозитория](#структура-репозитория) | Папки проекта |
+| [Стек технологий](#стек-технологий) | Backend, frontend, агент, инфра |
 | [Архитектура](#архитектура) | Два контура, диаграмма |
 | [Как работает агент](#как-работает-агент) | Tools, SSE, модель vs код |
 | [Приёмочные сценарии](#приёмочные-сценарии) | S1–S4 |
@@ -139,6 +140,23 @@ frontend/           Next.js
 docs/               Бриф, концепт-документы, сценарии приёмки
 scripts/            Приёмочный скрипт accept_s1_s4.py
 ```
+
+---
+
+## Стек технологий
+
+| Слой | Технологии |
+|------|------------|
+| **Backend** | Python 3.12+, FastAPI, uvicorn, SQLAlchemy 2 (async), Alembic, asyncpg, Pydantic Settings, httpx |
+| **Frontend** | Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS 4, shadcn/ui, react-markdown |
+| **Mock** | Python 3.12+, FastAPI (отдельный сервис `mock-severholod`) |
+| **Агент** | LangChain `create_agent`, LangGraph, 6 tools; LLM через `ChatOpenRouter` → OpenRouter (`qwen/qwen3.6-35b-a3b`) |
+| **Observability** | Langfuse v4 (опционально, `make obs`), `CallbackHandler` в backend |
+| **БД** | PostgreSQL 15 |
+| **Инфра** | Docker Compose, `make` как единая точка входа, `uv` (Python), `pnpm` (frontend) |
+| **Качество** | ruff, mypy (backend), ESLint, pytest |
+
+Подробнее про выбор стека: [docs/concept/vision.md](docs/concept/vision.md).
 
 ---
 
@@ -267,7 +285,7 @@ S4 — собственный сценарий. Без него бриф пок�
 
 ## Технические решения
 
-**Модель:** `qwen/qwen3-coder-480b-a22b-04-28` (через OpenRouter, переменная `OPENAI_API_KEY`).
+**Модель:** `qwen/qwen3.6-35b-a3b` (через OpenRouter, переменная `OPENAI_MODEL` в `.env`).
 
 **Клиент:** `ChatOpenRouter` из пакета `langchain-openrouter` — не `ChatOpenAI` с `base_url`. Второй вариант не передаёт reasoning-токены роутера, и ход мысли агента в чате исчезает.
 
