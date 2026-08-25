@@ -12,6 +12,13 @@
   --primary-foreground: oklch(0.98 0.01 210);
   --destructive: oklch(0.5 0.18 25);
   --ring: oklch(0.45 0.08 210);
+  --secondary: oklch(0.93 0.01 85);
+  --secondary-foreground: oklch(0.22 0.02 250);
+  --accent: oklch(0.45 0.08 210);
+  --accent-foreground: oklch(0.98 0.01 210);
+  --input: oklch(0.86 0.015 250);
+  --warning: oklch(0.78 0.12 75);
+  --warning-foreground: oklch(0.28 0.06 75);
 }
 
 .dark {
@@ -26,6 +33,13 @@
   --primary-foreground: oklch(0.16 0.02 250);
   --destructive: oklch(0.7 0.16 25);
   --ring: oklch(0.72 0.08 210);
+  --secondary: oklch(0.26 0.015 250);
+  --secondary-foreground: oklch(0.93 0.01 85);
+  --accent: oklch(0.72 0.08 210);
+  --accent-foreground: oklch(0.16 0.02 250);
+  --input: oklch(0.32 0.02 250);
+  --warning: oklch(0.72 0.12 75);
+  --warning-foreground: oklch(0.18 0.04 75);
 }
 
 @theme inline {
@@ -40,6 +54,13 @@
   --color-primary-foreground: var(--primary-foreground);
   --color-destructive: var(--destructive);
   --color-ring: var(--ring);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-input: var(--input);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --font-sans: var(--font-plex-sans);
   --font-serif: var(--font-plex-serif);
 }

@@ -1,4 +1,4 @@
-.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend migrate
+.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend lint-frontend migrate
 
 env:
 	bash scripts/write-env-from-keychain.sh
@@ -33,3 +33,6 @@ test-backend:
 
 lint-backend:
 	cd backend && uv run ruff check src tests && uv run ruff format --check src tests
+
+lint-frontend:
+	cd frontend && pnpm lint
