@@ -1,19 +1,33 @@
+import re
 from typing import Any
 
-from backend.agent.card_slots import add_system_evidence, mentioned, set_binding, slot
+from backend.agent.card_slots import (
+    add_system_evidence,
+    binding_status,
+    mentioned,
+    set_binding,
+    slot,
+)
 
 
-def apply_sites(card: dict[str, Any], items: list[dict[str, Any]]) -> list[str]:
+def apply_sites(
+    card: dict[str, Any],
+    items: list[dict[str, Any]],
+    query: str | None = None,
+) -> list[str]:
     updated: list[str] = []
     if not items:
-        if mentioned(card, "customer"):
+        if binding_status(card, "customer") == "resolved":
+            return updated
+        if query and query.strip() == (slot(card, "customer").get("mention") or "").strip():
             set_binding(card, "customer", status="not_found")
             updated.append("facts.customer")
-        if mentioned(card, "site"):
+        if query and query.strip() == (slot(card, "site").get("mention") or "").strip():
             set_binding(card, "site", status="not_found")
             updated.append("facts.site")
         return updated
 
+    items = _narrow_by_address(card, items)
     customers = {row["customer_id"] for row in items}
     if len(items) == 1:
         row = items[0]
@@ -54,17 +68,34 @@ def apply_assets(card: dict[str, Any], items: list[dict[str, Any]]) -> list[str]
             updated.append("facts.asset")
         return updated
 
+    items = _narrow_by_address(card, items)
     sites = {row["site_id"] for row in items}
     site_status = slot(card, "site")["binding"]["status"]
+    customers = {row.get("customer_id") for row in items if row.get("customer_id")}
+    if len(customers) == 1 and binding_status(card, "customer") != "resolved":
+        _resolve_customer(card, next(row for row in items if row.get("customer_id")))
+        updated.append("facts.customer")
 
     if len(items) == 1:
+        if site_status == "ambiguous":
+            return updated
         row = items[0]
         _resolve_asset(card, row)
         updated.append("facts.asset")
         if site_status != "resolved":
-            set_binding(card, "site", status="resolved", id_=row["site_id"], label=row["site_id"])
+            set_binding(
+                card,
+                "site",
+                status="resolved",
+                id_=row["site_id"],
+                label=row.get("address") or row["site_id"],
+            )
             add_system_evidence(
-                card, "site", source="eam", record_id=row["site_id"], label=row["site_id"]
+                card,
+                "site",
+                source="eam",
+                record_id=row["site_id"],
+                label=row.get("address") or row["site_id"],
             )
             updated.append("facts.site")
         return updated
@@ -99,6 +130,11 @@ def apply_tickets(card: dict[str, Any], items: list[dict[str, Any]]) -> list[str
     open_items = [
         row for row in items if row.get("status") in {"new", "in_progress", "waiting_for_customer"}
     ]
+    asset = slot(card, "asset")["binding"]
+    if asset.get("status") in {"not_found", "ambiguous"}:
+        return []
+    if asset.get("status") == "resolved" and asset.get("id"):
+        open_items = [row for row in open_items if row.get("asset_id") == asset["id"]]
     updated: list[str] = []
     if not open_items:
         if mentioned(card, "history"):
@@ -160,6 +196,28 @@ def apply_contract(card: dict[str, Any], items: list[dict[str, Any]]) -> str:
         "coverage": list(row.get("coverage") or []),
     }
     return "resolved"
+
+
+def _narrow_by_address(card: dict[str, Any], items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    if len(items) <= 1:
+        return items
+    blob = " ".join(
+        [
+            str((card.get("intake") or {}).get("text") or ""),
+            str((card.get("intake") or {}).get("sender") or ""),
+            str(slot(card, "site").get("mention") or ""),
+            str(slot(card, "customer").get("mention") or ""),
+        ]
+    ).casefold()
+    hits = [
+        row
+        for row in items
+        if any(
+            token[:7] in blob
+            for token in re.findall(r"[а-яёa-z0-9]{6,}", (row.get("address") or "").casefold())
+        )
+    ]
+    return hits if len(hits) == 1 else items
 
 
 def _resolve_customer(card: dict[str, Any], row: dict[str, Any]) -> None:

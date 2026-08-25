@@ -19,8 +19,8 @@
 
 | # | Sprint | Цель | Статус | Когда |
 |---|--------|------|--------|-------|
-| eval-01 | mock-contract | pytest/httpx: пустой поиск, два ХУ-17, dry-run accepted/persisted, ФЛК 400 | Planned | вместе со sprint 01 |
-| eval-02 | agent-s1-s4 | Жёсткие поля scenarios.md (binding, outcome, была ли примерка). Мягкие тексты — глазами | Planned | вместе со sprint 06 |
+| eval-01 | mock-contract | pytest/httpx: пустой поиск, два ХУ-17, dry-run accepted/persisted, ФЛК 400 | Done | sprint 01 |
+| eval-02 | agent-s1-s4 | Жёсткие поля scenarios.md (binding, outcome, была ли примерка). Мягкие тексты — глазами | Done | sprint 06 · `make accept` |
 
 Отдельные папки `sprints/eval/` заведём вместе с кодом. Нумерация независима.
 

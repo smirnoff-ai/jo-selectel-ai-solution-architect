@@ -2,7 +2,9 @@ from langchain.tools import tool
 
 from backend.agent.bindings import apply_assets
 from backend.agent.calculation import stash_asset_criticality
+from backend.agent.card_slots import binding_status, slot
 from backend.agent.catalog_call import catalog_get
+from backend.agent.complete_catalog import ensure_sites
 from backend.agent.run_context import get_run_context
 
 
@@ -17,6 +19,11 @@ def search_assets(
 ) -> str:
     """Поиск оборудования в EAM. Два ХУ-17 не выбирать."""
     ctx = get_run_context()
+    ensure_sites(ctx)
+    if binding_status(ctx.card, "site") == "ambiguous":
+        site_id = None
+    elif binding_status(ctx.card, "site") == "resolved":
+        site_id = site_id or slot(ctx.card, "site")["binding"]["id"]
 
     def on_items(card: dict, items: list[dict]) -> list[str]:
         stash_asset_criticality(card, items)

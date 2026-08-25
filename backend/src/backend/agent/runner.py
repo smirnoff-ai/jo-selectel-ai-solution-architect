@@ -8,6 +8,7 @@ from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from sqlalchemy.orm.attributes import flag_modified
 
+from backend.agent.complete_catalog import complete_catalog
 from backend.agent.factory import TOOLS, build_model
 from backend.agent.finale import Finale
 from backend.agent.guard import apply_guard, desk_status
@@ -61,6 +62,7 @@ class AgentRunner:
                     timeout=self._settings.agent_timeout_seconds,
                 )
                 await self._emit_trace(channel, repo, appeal, result, ctx)
+                complete_catalog(ctx)
                 finale = _finale_from(result)
                 decided = apply_guard(ctx.card, finale, ctx.catalog_errors)
                 ctx.card.setdefault("decision", {})

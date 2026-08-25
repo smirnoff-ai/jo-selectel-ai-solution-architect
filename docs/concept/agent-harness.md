@@ -33,7 +33,8 @@ flowchart TB
   Agent --> Tickets[search_tickets]
   Agent --> Contract[get_contract]
   Agent --> Final[Финал]
-  Final --> Guard[Предохранитель]
+  Final --> Complete[Добор справочников кодом]
+  Complete --> Guard[Предохранитель]
   Guard -->|create/update и опора ясна| Dry[Примерка ITSM]
 ```
 
@@ -121,6 +122,8 @@ flowchart TB
 | `get_contract` | агент | site_id или resolved площадка | договор | площадка не resolved |
 
 Правило 0/1/N пишет **код тула**. Схема `patch_facts` — [schemas/patch_facts.py](../requirements/severholod/schemas/patch_facts.py).
+
+После цикла тулов runner вызывает `complete_catalog`: если модель не сходила в CRM/EAM/ITSM, код повторяет поиски по mention и тем же правилам 0/1/N (адрес в тексте сужает две площадки; тикет только при resolved активе). Угадывать город без токена адреса нельзя.
 
 ### 9.1. MCP
 

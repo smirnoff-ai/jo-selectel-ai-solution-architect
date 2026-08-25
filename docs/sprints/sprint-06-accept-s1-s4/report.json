@@ -1,0 +1,30 @@
+[
+  {
+    "id": "S1",
+    "appeal_id": 1,
+    "status": "done",
+    "outcome": "create",
+    "errors": []
+  },
+  {
+    "id": "S2",
+    "appeal_id": 2,
+    "status": "clarify",
+    "outcome": "clarify",
+    "errors": []
+  },
+  {
+    "id": "S3",
+    "appeal_id": 3,
+    "status": "done",
+    "outcome": "update",
+    "errors": []
+  },
+  {
+    "id": "S4",
+    "appeal_id": 4,
+    "status": "clarify",
+    "outcome": "clarify",
+    "errors": []
+  }
+]

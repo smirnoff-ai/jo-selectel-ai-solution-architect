@@ -20,7 +20,7 @@ def search_sites(
 
     def on_items(card: dict, items: list[dict]) -> list[str]:
         stash_site_timezone(card, items)
-        return apply_sites(card, items)
+        return apply_sites(card, items, query=q or customer_name or address)
 
     return catalog_get(
         ctx,

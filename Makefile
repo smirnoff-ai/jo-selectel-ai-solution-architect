@@ -1,4 +1,4 @@
-.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend lint-frontend migrate
+.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend lint-frontend migrate accept
 
 env:
 	bash scripts/write-env-from-keychain.sh
@@ -36,3 +36,6 @@ lint-backend:
 
 lint-frontend:
 	cd frontend && pnpm lint
+
+accept:
+	cd backend && uv run python ../scripts/accept_s1_s4.py

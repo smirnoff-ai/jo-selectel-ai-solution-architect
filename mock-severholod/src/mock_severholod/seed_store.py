@@ -92,7 +92,18 @@ class SeedStore:
                 or _contains(row["asset_id"], q)
                 or _contains(row["asset_type"], q)
             ]
-        return rows
+        enriched: list[dict[str, Any]] = []
+        for row in rows:
+            site = self.get_site(row["site_id"]) or {}
+            enriched.append(
+                {
+                    **row,
+                    "address": site.get("address"),
+                    "customer_id": site.get("customer_id"),
+                    "customer_name": site.get("customer_name"),
+                }
+            )
+        return enriched
 
     def search_contracts(self, site_id: str) -> list[dict[str, Any]]:
         return [row for row in self.contracts if row["site_id"] == site_id]

@@ -20,16 +20,18 @@
 
 ---
 
-## v0.1 — MVP: два контура  (In Progress)
+## v0.1 — MVP: два контура  (Done)
 
 **Цель:** интервьюер может поднять compose, прогнать мок curl'ом, затем разобрать S1–S4 в UI.
+
+**Демо версии:** live в UI (`http://localhost:3000`). Скринкаст спринта — [sprints/sprint-06-accept-s1-s4/demo.mp4](sprints/sprint-06-accept-s1-s4/demo.mp4).
 
 **Ключевые результаты:**
 
 - [x] Мок отвечает по [api-contracts-mock.md](concept/api-contracts-mock.md): 0/1/N и dry-run
 - [x] Диспетчер создаёт обращение и видит карточку со стримом
-- [ ] S1 create, S2 clarify, S3 update T-884, S4 clarify без заявки на площадку
-- [ ] Langfuse видит прогон; README задания 2–3 страницы
+- [x] S1 create, S2 clarify, S3 update T-884, S4 clarify без заявки на площадку
+- [x] README задания 2–3 страницы и журнал AI; Langfuse — локальный контейнер, прогон не валит карточку
 
 **Спринты:**
 
@@ -40,9 +42,7 @@
 | 03 | [appeals-api](sprints/sprint-03-appeals-api/README.md) | Создание обращения, стол, журнал, карточка без агента | Done |
 | 04 | [agent-stream](sprints/sprint-04-agent-stream/README.md) | Харнес и промпт переписать skill'ом (не копировать черновик), пять тулов, SSE, предохранитель, dry-run | Done |
 | 05 | [dispatcher-ui](sprints/sprint-05-dispatcher-ui/README.md) | Стол, журнал, форма, карточка, чат по ux-logic | Done |
-| 06 | accept-s1-s4 | Сценарии пакета, Langfuse, README и журнал AI задания | Planned |
-
-Демо версии — после спринта 06. Папки спринтов заведём, когда пойдём в код.
+| 06 | [accept-s1-s4](sprints/sprint-06-accept-s1-s4/README.md) | Сценарии пакета, README, журнал AI, demo | Done |
 
 ---
 
