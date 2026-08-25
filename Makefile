@@ -1,4 +1,4 @@
-.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend
+.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend migrate
 
 env:
 	bash scripts/write-env-from-keychain.sh
@@ -24,6 +24,9 @@ dev-backend:
 
 dev-frontend:
 	cd frontend && BACKEND_URL=http://127.0.0.1:8000 pnpm dev --port 3000
+
+migrate:
+	cd backend && PYTHONPATH=src uv run alembic upgrade head
 
 test-backend:
 	cd backend && uv run pytest

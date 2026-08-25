@@ -37,7 +37,7 @@
 |---|--------|------|--------|
 | 01 | [mock-severholod](sprints/sprint-01-mock-severholod/README.md) | Сервис, сид, контракт, тесты поиска и dry-run. Без агента и UI | Done |
 | 02 | [reflex-skeleton](sprints/sprint-02-reflex-skeleton/README.md) | backend+frontend каркас, Postgres, compose, логин, fail-fast секретов | Done |
-| 03 | appeals-api | Создание обращения, стол, журнал, карточка без агента | Planned |
+| 03 | [appeals-api](sprints/sprint-03-appeals-api/README.md) | Создание обращения, стол, журнал, карточка без агента | Done |
 | 04 | agent-stream | Харнес и промпт переписать skill'ом (не копировать черновик), пять тулов, SSE, предохранитель, dry-run | Planned |
 | 05 | dispatcher-ui | Стол, журнал, форма, карточка, чат по ux-logic | Planned |
 | 06 | accept-s1-s4 | Сценарии пакета, Langfuse, README и журнал AI задания | Planned |
