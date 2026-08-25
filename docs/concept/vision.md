@@ -142,7 +142,7 @@ graph TB
 ### Langfuse
 
 - Трассы и потом датасет S1–S4. Промпты оттуда не берём.
-- **Статус:** MVP. Без ключей Рефлекс не стартует.
+- **Статус:** MVP. Без `LANGFUSE_*` в `.env` Рефлекс не стартует. Живой контейнер для разбора не обязателен.
 
 ---
 
@@ -151,8 +151,8 @@ graph TB
 | Вопрос | Короткий ответ | Документ |
 |--------|----------------|----------|
 | Есть агент | да, один конфиг `reflex-appeal` | harness |
-| Runtime | `stream` в UI, `invoke` в API; cancel нет | generation |
-| Путь к LLM | LangChain `ChatOpenAI`, прямой OpenAI-compatible endpoint | harness §6 |
+| Runtime | `stream` в UI и в приёмке; отдельного `invoke` нет; cancel нет | generation |
+| Путь к LLM | LangChain `ChatOpenRouter` (OpenRouter, не `ChatOpenAI` + base_url) | harness §6 |
 | Три контура | лента UI / `appeals.card` / Langfuse | harness, data-model |
 | Профиль | частично `agent-platform-v1` | harness |
 
@@ -211,7 +211,7 @@ jo-selectel-ai-solution-architect/
 - **Два контура** — мок не библиотека внутри Рефлекса.
 - **Мок первым** — Рефлекс пишем, когда в мок уже можно стучать.
 - **Не угадывать** — 0 / 1 / N честно; id пишет код тула.
-- **Fail fast** — нет ключа LLM или Langfuse, Рефлекс не стартует.
+- **Fail fast** — нет ключа LLM или переменных Langfuse в `.env`, Рефлекс не стартует. Контейнер Langfuse на прогон не влияет.
 
 ---
 
@@ -222,7 +222,7 @@ jo-selectel-ai-solution-architect/
 | Мок и backend | Python 3.12, uv, FastAPI, uvicorn |
 | Рефлекс DB | PostgreSQL 15+, SQLAlchemy 2 async, Alembic, asyncpg |
 | Мок storage | JSON-файлы в образе (сид маленький, Postgres моку не нужен) |
-| Агент | LangChain `bind_tools` + цикл, не Deep Agents |
+| Агент | LangChain `create_agent` + `ChatOpenRouter`, не Deep Agents |
 | Frontend | Next.js App Router, React, Tailwind 4, shadcn |
 | Стрим | SSE |
 | Observability | Langfuse в compose Рефлекса |

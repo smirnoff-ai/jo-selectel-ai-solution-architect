@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
 
 import httpx
 
-BASE = "http://127.0.0.1:8000"
+BASE = os.environ.get("ACCEPT_BASE", "http://127.0.0.1:8000")
 RECEIVED = "2026-08-13T16:40:00+03:00"
 
 SCENARIOS: list[dict[str, Any]] = [
@@ -227,7 +228,9 @@ def main() -> int:
             if errors:
                 failed += 1
             print(f"{scenario['id']} appeal={appeal_id} {mark} {errors or row['outcome']}")
-    out = Path(__file__).resolve().parents[1] / "docs/sprints/sprint-06-accept-s1-s4/report.json"
+    default_out = Path(__file__).resolve().parents[1] / "docs/sprints/sprint-06-accept-s1-s4/report.json"
+    out = Path(os.environ.get("ACCEPT_REPORT", default_out))
+    out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"wrote {out}")
     return 1 if failed else 0

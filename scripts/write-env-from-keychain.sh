@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Только macOS + Keychain. На сервере: cp .env.example .env и вписать OPENAI_API_KEY.
 set -euo pipefail
 
 kc() {

@@ -1,10 +1,17 @@
-.PHONY: mock mock-test mock-lint env up down dev-backend dev-frontend test-backend lint-backend lint-frontend migrate accept
+.PHONY: mock mock-test mock-lint env up obs down dev-backend dev-frontend test-backend lint-backend lint-frontend migrate accept demo
+
+DEMO_OUT ?= /opt/cursor/artifacts
 
 env:
 	bash scripts/write-env-from-keychain.sh
 
-up: env
-	docker compose up --build
+up:
+	bash scripts/ensure-env.sh
+	docker compose up --build -d --wait postgres mock-severholod backend frontend
+
+obs:
+	bash scripts/ensure-env.sh
+	docker compose up --build -d --wait
 
 down:
 	docker compose down
@@ -38,4 +45,17 @@ lint-frontend:
 	cd frontend && pnpm lint
 
 accept:
-	cd backend && uv run python ../scripts/accept_s1_s4.py
+	docker compose exec -T \
+		-e ACCEPT_BASE=http://127.0.0.1:8000 \
+		-e ACCEPT_REPORT=/tmp/accept-s1-s4.json \
+		backend python /app/scripts/accept_s1_s4.py
+
+demo:
+	@out="$(DEMO_OUT)"; \
+	if ! mkdir -p "$$out" 2>/dev/null; then \
+		out=/tmp/reflex-interview-demo; \
+		mkdir -p "$$out"; \
+		echo "DEMO_OUT fallback: $$out"; \
+	fi; \
+	cd frontend && PATH="$(HOME)/.local/bin:$$PATH" DEMO_OUT="$$out" node scripts/interview-demo.mjs; \
+	cp "$$out/interview-demo.mp4" docs/sprints/sprint-08-agent-voice/demo.mp4

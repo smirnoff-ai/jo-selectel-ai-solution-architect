@@ -2,9 +2,7 @@
 
 > Навигатор. Это прототип ИИ-диспетчерской для пилота «СеверХолод».
 
-Источник требований: бриф [requirements/task.md](requirements/task.md) и пакет заказчика [requirements/severholod/](requirements/severholod/).
-
-Код ещё не начат. После ревью этого пакета — sprint 01, мок-контур.
+Прототип живой. Вход для интервьюера — корневой [README.md](../README.md). Бриф: [requirements/task.md](requirements/task.md), пакет объекта: [requirements/severholod/](requirements/severholod/).
 
 ---
 
@@ -70,9 +68,9 @@
 
 | Документ | Назначение |
 |----------|------------|
-| [roadmap.md](roadmap.md) | v0.1, мок → Рефлекс |
+| [roadmap.md](roadmap.md) | v0.1 и follow-up 07–08 |
 | [roadmap-eval.md](roadmap-eval.md) | Контракт мока + S1–S4 |
-| sprints/ | появятся с первым кодовым спринтом |
+| [sprints/](sprints/) | история реализации |
 
 ---
 

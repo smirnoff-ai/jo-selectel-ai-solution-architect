@@ -40,7 +40,7 @@
 | Протокол | OpenAI-compatible HTTPS |
 | Критичность | MVP |
 
-`OPENAI_BASE_URL`, `OPENAI_API_KEY`, `OPENAI_MODEL` в Settings. Нет ключа — процесс не стартует. Смена провайдера = три переменные, тулы те же.
+`OPENAI_API_KEY` и `OPENAI_MODEL` в Settings. Клиент — `ChatOpenRouter` (пакет сам ходит на OpenRouter). `OPENAI_BASE_URL` Settings ещё требует, конструктор модели его не читает. Нет ключа — процесс не стартует. Из РФ до OpenRouter обычно нужен VPN.
 
 ### Langfuse
 
@@ -51,7 +51,7 @@
 | Протокол | HTTPS Langfuse SDK |
 | Критичность | MVP |
 
-`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`. Нет — Рефлекс не стартует. Промпты из Langfuse не читаем. Локально — self-host v4 (ClickHouse / Redis / MinIO), SDK актуальный.
+`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` — без них Settings не поднимается. Живой контейнер для разбора не обязателен: нет handler — прогон идёт, трасс нет. Промпты из Langfuse не читаем. Локально — self-host v4 в compose (worker, ClickHouse, Redis, MinIO).
 
 Почта, Telegram, очередь, настоящая CRM — не подключаем.
 
@@ -82,7 +82,7 @@ graph LR
 | Интеграция | Риск | Митигация |
 |------------|------|-----------|
 | **мок** | Не запущен / 5xx | Tool error, исход dispatch, write нет |
-| **LLM** | Таймаут, галлюцинация id | Timeout; id пишет тул; предохранитель после финала |
-| **Langfuse** | Упал хост | На старте fail fast; в прогоне — не глотать молча, лог ERROR; карточку диспетчеру всё равно собрать |
+| **LLM** | Таймаут, галлюцинация id | Timeout; id на карточку только через `update_card` после поиска |
+| **Langfuse** | Упал хост | Прогон не валит карточку; трассы нет |
 
-Для MVP критичны все три. Мок проверяем отдельно до Рефлекса.
+Для разбора критичны мок и LLM. Langfuse — наблюдаемость. Мок проверяем отдельно до Рефлекса.

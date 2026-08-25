@@ -1,7 +1,6 @@
 services:
   postgres:
     image: postgres:16-alpine
-    platform: linux/arm64
     environment:
       POSTGRES_USER: reflex
       POSTGRES_PASSWORD: reflex
@@ -18,7 +17,6 @@ services:
 
   langfuse-db:
     image: postgres:16-alpine
-    platform: linux/arm64
     environment:
       POSTGRES_USER: langfuse
       POSTGRES_PASSWORD: langfuse
@@ -178,6 +176,7 @@ services:
       - .env
     volumes:
       - ./docs/requirements/severholod/prompts/system.md:/docs/requirements/severholod/prompts/system.md:ro
+      - ./scripts/accept_s1_s4.py:/app/scripts/accept_s1_s4.py:ro
     depends_on:
       postgres:
         condition: service_healthy
