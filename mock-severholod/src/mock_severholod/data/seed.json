@@ -1,0 +1,95 @@
+{
+  "sites": [
+    {
+      "site_id": "S-MSK-01",
+      "customer_id": "C-101",
+      "customer_name": "СеверФуд",
+      "address": "Москва, Дмитровское шоссе, 100",
+      "timezone": "Europe/Moscow"
+    },
+    {
+      "site_id": "S-EKB-02",
+      "customer_id": "C-101",
+      "customer_name": "СеверФуд",
+      "address": "Екатеринбург, улица Монтажников, 7",
+      "timezone": "Asia/Yekaterinburg"
+    },
+    {
+      "site_id": "S-MSK-03",
+      "customer_id": "C-202",
+      "customer_name": "Ритейл-Плюс",
+      "address": "Москва, Ленинградское шоссе, 44",
+      "timezone": "Europe/Moscow"
+    }
+  ],
+  "assets": [
+    {
+      "asset_id": "A-1001",
+      "site_id": "S-MSK-01",
+      "local_code": "ХУ-17",
+      "asset_type": "холодильная установка",
+      "criticality": "high"
+    },
+    {
+      "asset_id": "A-1002",
+      "site_id": "S-EKB-02",
+      "local_code": "ХУ-17",
+      "asset_type": "холодильная установка",
+      "criticality": "high"
+    },
+    {
+      "asset_id": "A-1003",
+      "site_id": "S-MSK-01",
+      "local_code": "ХУ-18",
+      "asset_type": "холодильная установка",
+      "criticality": "medium"
+    },
+    {
+      "asset_id": "A-2001",
+      "site_id": "S-MSK-03",
+      "local_code": "КМ-4",
+      "asset_type": "компрессор",
+      "criticality": "medium"
+    }
+  ],
+  "contracts": [
+    {
+      "contract_id": "K-101",
+      "site_id": "S-MSK-01",
+      "plan": "Gold",
+      "response_sla": "60_minutes",
+      "service_window": "24x7",
+      "coverage": ["diagnostics", "repair", "spare_parts_up_to_50000_rub"]
+    },
+    {
+      "contract_id": "K-102",
+      "site_id": "S-EKB-02",
+      "plan": "Standard",
+      "response_sla": "4_business_hours",
+      "service_window": "weekdays_09_18_local",
+      "coverage": ["diagnostics", "repair"]
+    },
+    {
+      "contract_id": "K-203",
+      "site_id": "S-MSK-03",
+      "plan": "Basic",
+      "response_sla": "next_business_day",
+      "service_window": "weekdays_09_18_local",
+      "coverage": ["diagnostics"]
+    }
+  ],
+  "tickets": [
+    {
+      "ticket_id": "T-884",
+      "customer_id": "C-101",
+      "site_id": "S-MSK-01",
+      "asset_id": "A-1001",
+      "contract_id": "K-101",
+      "status": "waiting_for_customer",
+      "priority": "high",
+      "summary": "Температура +7, возможная неисправность компрессора",
+      "created_at": "2026-08-13T15:55:00+03:00",
+      "updated_at": "2026-08-13T15:55:00+03:00"
+    }
+  ]
+}

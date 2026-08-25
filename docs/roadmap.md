@@ -20,22 +20,22 @@
 
 ---
 
-## v0.1 — MVP: два контура  (In Progress: документация)
+## v0.1 — MVP: два контура  (In Progress)
 
 **Цель:** интервьюер может поднять compose, прогнать мок curl'ом, затем разобрать S1–S4 в UI.
 
 **Ключевые результаты:**
 
-- [ ] Мок отвечает по [api-contracts-mock.md](concept/api-contracts-mock.md): 0/1/N и dry-run
+- [x] Мок отвечает по [api-contracts-mock.md](concept/api-contracts-mock.md): 0/1/N и dry-run
 - [ ] Диспетчер создаёт обращение и видит карточку со стримом
 - [ ] S1 create, S2 clarify, S3 update T-884, S4 clarify без заявки на площадку
 - [ ] Langfuse видит прогон; README задания 2–3 страницы
 
-**Спринты** (код не начинаем, пока нет «ок» на этот пакет доков):
+**Спринты:**
 
 | # | Sprint | Цель | Статус |
 |---|--------|------|--------|
-| 01 | mock-severholod | Сервис, сид, контракт, тесты поиска и dry-run. Без агента и UI | Planned |
+| 01 | [mock-severholod](sprints/sprint-01-mock-severholod/README.md) | Сервис, сид, контракт, тесты поиска и dry-run. Без агента и UI | Done |
 | 02 | reflex-skeleton | backend+frontend каркас, Postgres, compose, логин, fail-fast секретов | Planned |
 | 03 | appeals-api | Создание обращения, стол, журнал, карточка без агента | Planned |
 | 04 | agent-stream | Харнес и промпт переписать skill'ом (не копировать черновик), пять тулов, SSE, предохранитель, dry-run | Planned |
