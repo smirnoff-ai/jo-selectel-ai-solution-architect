@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { Button } from "@/components/ui/button";
+
 export function ThemeToggle() {
   const [dark, setDark] = useState(() => {
     if (typeof document === "undefined") {
@@ -18,12 +20,8 @@ export function ThemeToggle() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      className="rounded-md border border-border px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground"
-    >
+    <Button type="button" variant="outline" size="sm" onClick={toggle}>
       {dark ? "Светлая" : "Тёмная"}
-    </button>
+    </Button>
   );
 }

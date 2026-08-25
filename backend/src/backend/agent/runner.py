@@ -57,7 +57,7 @@ class AgentRunner:
                 ctx = RunContext(appeal_id=appeal_id, card=appeal.card, mock=mock)
                 set_run_context(ctx)
                 result = await asyncio.wait_for(
-                    self._invoke(appeal, reply_text),
+                    self._invoke(appeal, reply_text, channel, ctx),
                     timeout=self._settings.agent_timeout_seconds,
                 )
                 await self._emit_trace(channel, repo, appeal, result, ctx)
@@ -113,7 +113,13 @@ class AgentRunner:
             mock.close()
             channel.close()
 
-    async def _invoke(self, appeal: Appeal, reply_text: str | None) -> dict[str, Any]:
+    async def _invoke(
+        self,
+        appeal: Appeal,
+        reply_text: str | None,
+        channel: RunChannel,
+        ctx: RunContext,
+    ) -> dict[str, Any]:
         if self._model is None:
             self._model = build_model(self._settings)
         lf = make_langfuse(self._settings)
@@ -129,11 +135,18 @@ class AgentRunner:
             except Exception:
                 logger.exception("langfuse trace")
         try:
+
+            async def on_event(payload: dict[str, Any]) -> None:
+                await channel.emit(payload)
+                if payload.get("type") == "tool_result" and ctx.snapshots:
+                    await channel.emit({"type": "card_updated", "card": ctx.snapshots[-1]})
+
             return await run_tool_loop(
                 self._model,
                 TOOLS,
                 system_prompt=load_system_prompt(),
                 user_text=build_user_message(appeal, reply_text),
+                on_event=on_event,
             )
         finally:
             if trace is not None:
@@ -153,9 +166,8 @@ class AgentRunner:
         repo: AppealRepository,
         appeal: Appeal,
         result: dict[str, Any],
-        ctx: RunContext,
+        _ctx: RunContext,
     ) -> None:
-        snap_i = 0
         for message in result.get("messages") or []:
             if not isinstance(message, BaseMessage) or isinstance(message, HumanMessage):
                 continue
@@ -168,6 +180,7 @@ class AgentRunner:
                         appeal.id,
                         "thought",
                         {"text": thought},
+                        emit=False,
                     )
                 for call in message.tool_calls or []:
                     await _note(
@@ -176,6 +189,7 @@ class AgentRunner:
                         appeal.id,
                         "tool_call",
                         {"id": call.get("id"), "name": call.get("name"), "args": call.get("args")},
+                        emit=False,
                     )
                 text = _text(message)
                 if text and not message.tool_calls:
@@ -186,6 +200,7 @@ class AgentRunner:
                         "message",
                         {"text": text},
                         event="message_final",
+                        emit=False,
                     )
             elif isinstance(message, ToolMessage):
                 payload = _parse_tool(message.content)
@@ -195,10 +210,8 @@ class AgentRunner:
                     appeal.id,
                     "tool_result",
                     {"id": message.tool_call_id, "name": message.name, **payload},
+                    emit=False,
                 )
-                if snap_i < len(ctx.snapshots):
-                    await channel.emit({"type": "card_updated", "card": ctx.snapshots[snap_i]})
-                    snap_i += 1
 
     async def _fail(self, appeal_id: int, channel: RunChannel, detail: str) -> None:
         try:
@@ -237,9 +250,12 @@ async def _note(
     kind: str,
     body: dict[str, Any],
     event: str | None = None,
+    *,
+    emit: bool = True,
 ) -> None:
     await repo.add_message(AppealMessage(appeal_id=appeal_id, author="agent", kind=kind, body=body))
-    await channel.emit({"type": event or kind, **body} if event else {"type": kind, **body})
+    if emit:
+        await channel.emit({"type": event or kind, **body} if event else {"type": kind, **body})
 
 
 def _finale_from(result: dict[str, Any]) -> Finale | None:
