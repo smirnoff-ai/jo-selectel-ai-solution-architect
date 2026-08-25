@@ -34,20 +34,21 @@
 | `type` | Смысл | В UI | В историю |
 |--------|-------|:----:|:---------:|
 | `run_started` | прогон пошёл | да | нет |
-| `thought` | reasoning провайдера | да | да, одним блоком в конце мысли |
+| `thought` | reasoning провайдера: live — поле `delta`, в историю — поле `text` одним блоком в конце мысли | да | да, одним блоком |
 | `tool_call` | имя и аргументы | да | да |
 | `tool_result` | summary + JSON | да | да |
-| `card_updated` | актуальный card | левая колонка | нет (card в строке appeal) |
+| `card_updated` | актуальный card после `update_card` | левая колонка | нет (card в строке appeal) |
 | `message_delta` | токен markdown | да live | нет |
 | `message_final` | готовый markdown | да | да |
 | `run_finished` | исход, status, auto_in_prod | да | событие хронологии |
 | `run_error` | упал | да | да |
+| `context_usage` | токены провайдера в конце | нет | нет |
 
 ---
 
 ## 4. Токены
 
-Backend обязан прислать `message_final` после серии `message_delta`. UI копит delta и заменяет на final. Reasoning — блок, если провайдер прислал; не выдумываем.
+Backend шлёт `thought` с `delta` по мере токенов мысли, затем в историю кладёт один `thought` с полным `text`. После серии `message_delta` обязан прислать `message_final`. UI копит delta и заменяет на final. Reasoning не выдумываем. В конце прогона может прийти `context_usage` (токены провайдера) — в UI не рисуем.
 
 ---
 
@@ -69,7 +70,13 @@ Backend обязан прислать `message_final` после серии `mes
 
 ## 7. Structured output
 
-Финал — короткий объект: outcome, reason, questions, warnings, reply_draft. Код мержит в `card.decision`, затем предохранитель и опционально dry-run. Исход на стол пишет **предохранитель по карточке**, не доверие к JSON модели. Нет валидного финала — reason «Модель не вернула финал», outcome всё равно из лестницы (create/update/clarify/…). Карточку успехом не врём: статус стола = исход после guard.
+Финал — короткий объект: outcome, reason, questions, warnings, reply_draft, grounds. Агент отдаёт его через `response_format=ToolStrategy(Finale)` (`structured_response`); если модели не вышло — парсим JSON из последнего текста. Код мержит в `card.decision`, затем тонкий предохранитель и опционально dry-run.
+
+`ToolStrategy` съедает последний ход модели: это вызов схемы, не markdown. Если в прогоне не было `message_final` от модели, runner после guard собирает отчёт диспетчеру из карточки и шлёт его как `message_final` до `run_finished`. Если модель всё же написала текст — его не переписываем. GET ленты так же дописывает отчёт, если в истории его нет, а исход на карточке уже есть.
+
+Стол берёт `outcome` из JSON модели, если он согласован с уже найденными слотами карточки. Guard правит только противоречие (create/update/approve/refuse без опоры → `clarify`; create при уже найденной заявке → `update`; договор не найден → `refuse_auto`; два 5xx каталога → `dispatch`) и может дописать предупреждение SLA. Согласованный исход не переписывает в «более вероятный».
+
+Нет валидного финала — `outcome=dispatch`, reason «Модель не вернула финал». Лестницы create/update из пустого финала нет. Карточку успехом не врём: статус стола = исход после guard.
 
 ---
 

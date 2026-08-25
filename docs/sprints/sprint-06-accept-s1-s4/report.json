@@ -1,30 +1,82 @@
 [
   {
     "id": "S1",
-    "appeal_id": 1,
+    "appeal_id": 5,
     "status": "done",
     "outcome": "create",
+    "tools": [
+      "update_card",
+      "search_sites",
+      "update_card",
+      "search_assets",
+      "update_card",
+      "search_tickets",
+      "get_contract",
+      "update_card",
+      "calculate",
+      "update_card",
+      "update_card"
+    ],
     "errors": []
   },
   {
     "id": "S2",
-    "appeal_id": 2,
+    "appeal_id": 6,
     "status": "clarify",
     "outcome": "clarify",
+    "tools": [
+      "update_card",
+      "search_sites",
+      "update_card",
+      "search_assets",
+      "update_card",
+      "update_card"
+    ],
     "errors": []
   },
   {
     "id": "S3",
-    "appeal_id": 3,
+    "appeal_id": 7,
     "status": "done",
     "outcome": "update",
+    "tools": [
+      "update_card",
+      "search_sites",
+      "search_sites",
+      "update_card",
+      "search_assets",
+      "update_card",
+      "search_tickets",
+      "update_card",
+      "get_contract",
+      "update_card",
+      "calculate",
+      "update_card",
+      "update_card"
+    ],
     "errors": []
   },
   {
     "id": "S4",
-    "appeal_id": 4,
+    "appeal_id": 8,
     "status": "clarify",
     "outcome": "clarify",
+    "tools": [
+      "update_card",
+      "search_sites",
+      "search_sites",
+      "update_card",
+      "search_assets",
+      "search_assets",
+      "search_assets",
+      "search_assets",
+      "update_card",
+      "get_contract",
+      "update_card",
+      "calculate",
+      "update_card",
+      "update_card"
+    ],
     "errors": []
   }
 ]

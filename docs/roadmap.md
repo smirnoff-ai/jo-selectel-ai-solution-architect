@@ -43,6 +43,8 @@
 | 04 | [agent-stream](sprints/sprint-04-agent-stream/README.md) | Харнес и промпт переписать skill'ом (не копировать черновик), пять тулов, SSE, предохранитель, dry-run | Done |
 | 05 | [dispatcher-ui](sprints/sprint-05-dispatcher-ui/README.md) | Стол, журнал, форма, карточка, чат по ux-logic | Done |
 | 06 | [accept-s1-s4](sprints/sprint-06-accept-s1-s4/README.md) | Сценарии пакета, README, журнал AI, demo | Done |
+| 07 | [live-agent](sprints/sprint-07-ui-wishes/README.md) | `create_agent`, стрим, Langfuse thread, без `complete_catalog`, окно обращения | Done |
+| 08 | ui-пульт | Визуал логина, стола, журнала | Planned |
 
 ---
 

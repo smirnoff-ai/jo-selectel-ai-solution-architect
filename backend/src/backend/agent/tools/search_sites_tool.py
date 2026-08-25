@@ -1,27 +1,30 @@
+from typing import Annotated
+
 from langchain.tools import tool
 
-from backend.agent.bindings import apply_sites
-from backend.agent.calculation import stash_site_timezone
 from backend.agent.catalog_call import catalog_get
 from backend.agent.run_context import get_run_context
 
 
 @tool
 def search_sites(
-    q: str | None = None,
-    customer_id: str | None = None,
-    site_id: str | None = None,
-    customer_name: str | None = None,
-    address: str | None = None,
-    timezone: str | None = None,
+    q: Annotated[
+        str | None,
+        "Свободный запрос: название организации или адрес, не имя человека",
+    ] = None,
+    customer_id: Annotated[str | None, "Идентификатор клиента из предыдущего ответа поиска"] = None,
+    site_id: Annotated[str | None, "Идентификатор площадки, если уже известен из поиска"] = None,
+    customer_name: Annotated[str | None, "Название организации-клиента"] = None,
+    address: Annotated[str | None, "Адрес или часть адреса объекта"] = None,
+    timezone: Annotated[str | None, "Часовой пояс площадки, только если он явно назван"] = None,
 ) -> str:
-    """Поиск клиента и площадок в CRM. Привязку 0/1/N пишет код."""
+    """Ищет клиента и площадки в справочнике клиентов.
+
+    Карточку не меняет. Вернёт записи в result.items. Ноль, одну или несколько
+    записей ты сам переносишь на карточку через update_card. Можно вызвать
+    снова с другими фильтрами. Имя человека из подписи — плохой фильтр.
+    """
     ctx = get_run_context()
-
-    def on_items(card: dict, items: list[dict]) -> list[str]:
-        stash_site_timezone(card, items)
-        return apply_sites(card, items, query=q or customer_name or address)
-
     return catalog_get(
         ctx,
         catalog="crm",
@@ -34,9 +37,11 @@ def search_sites(
             "address": address,
             "timezone": timezone,
         },
-        on_items=on_items,
         empty_summary="Площадок не нашли",
         found_summary=lambda items: f"Площадок: {len(items)}",
-        next_on_empty=["уточнить организацию или адрес, не имя человека"],
-        next_on_found=["если объект resolved — get_contract и search_assets"],
+        next_on_empty=["уточнить организацию или адрес и повторить поиск, затем update_card"],
+        next_on_found=[
+            "запиши клиента и площадку через update_card по числу записей в result.items",
+            "если в письме назвали установку — сразу search_assets, даже когда площадок несколько",
+        ],
     )

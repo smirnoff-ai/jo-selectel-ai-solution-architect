@@ -1,49 +1,80 @@
+import json
+import re
+from typing import Annotated
+
 from langchain.tools import tool
 
-from backend.agent.bindings import apply_assets
-from backend.agent.calculation import stash_asset_criticality
-from backend.agent.card_slots import binding_status, slot
 from backend.agent.catalog_call import catalog_get
-from backend.agent.complete_catalog import ensure_sites
 from backend.agent.run_context import get_run_context
+from backend.agent.tool_payload import tool_payload
 
 
 @tool
 def search_assets(
-    q: str | None = None,
-    asset_id: str | None = None,
-    site_id: str | None = None,
-    local_code: str | None = None,
-    asset_type: str | None = None,
-    criticality: str | None = None,
+    q: Annotated[
+        str | None,
+        "Код, число или тип установки. Разговорное «семнадцатая» лучше передать как число или код",
+    ] = None,
+    asset_id: Annotated[str | None, "Идентификатор актива из предыдущего ответа поиска"] = None,
+    site_id: Annotated[
+        str | None,
+        "Идентификатор площадки, если хочешь сузить поиск. С карточки сам не подставится",
+    ] = None,
+    local_code: Annotated[str | None, "Внутренний код установки на площадке"] = None,
+    asset_type: Annotated[str | None, "Тип оборудования, если кода нет"] = None,
+    criticality: Annotated[str | None, "Критичность, только если она явно названа"] = None,
 ) -> str:
-    """Поиск оборудования в EAM. Два ХУ-17 не выбирать."""
+    """Ищет оборудование в реестре.
+
+    Карточку не меняет. Несколько совпадений с одним кодом — не выбирай,
+    запиши неоднозначность через update_card и уточни у диспетчера.
+    """
     ctx = get_run_context()
-    ensure_sites(ctx)
-    if binding_status(ctx.card, "site") == "ambiguous":
-        site_id = None
-    elif binding_status(ctx.card, "site") == "resolved":
-        site_id = site_id or slot(ctx.card, "site")["binding"]["id"]
-
-    def on_items(card: dict, items: list[dict]) -> list[str]:
-        stash_asset_criticality(card, items)
-        return apply_assets(card, items)
-
+    query = _asset_query(q)
+    if not any((query, asset_id, local_code, asset_type)):
+        return json.dumps(
+            tool_payload(
+                status="error",
+                summary="Нужен код, число или тип установки",
+                next_actions=["передать q или local_code из письма, не искать все активы площадки"],
+            ),
+            ensure_ascii=False,
+        )
     return catalog_get(
         ctx,
         catalog="eam",
         path="/eam/v1/assets",
         params={
-            "q": q,
+            "q": query,
             "asset_id": asset_id,
             "site_id": site_id,
             "local_code": local_code,
             "asset_type": asset_type,
             "criticality": criticality,
         },
-        on_items=on_items,
         empty_summary="Активов не нашли",
         found_summary=lambda items: f"Активов: {len(items)}",
-        next_on_empty=["не заводить заявку на площадку без актива, если актив называли"],
-        next_on_found=["если несколько — clarify; если один — search_tickets и get_contract"],
+        next_on_empty=[
+            "если искали разговорную форму — повторить q числом или кодом из письма",
+            "запиши not_found через update_card; заявку на площадку без актива не предлагай",
+        ],
+        next_on_found=[
+            "запиши оборудование через update_card: одна запись — resolved, несколько — ambiguous",
+            "критичность из result запомни для calculate",
+        ],
     )
+
+
+_ORDINAL_Q = re.compile(
+    r"^(\d+)\s*-?(?:я|й|е|ая|ое|ый|ую)?$",
+    flags=re.IGNORECASE,
+)
+
+
+def _asset_query(q: str | None) -> str | None:
+    if q is None:
+        return None
+    match = _ORDINAL_Q.fullmatch(q.strip())
+    if match:
+        return match.group(1)
+    return q

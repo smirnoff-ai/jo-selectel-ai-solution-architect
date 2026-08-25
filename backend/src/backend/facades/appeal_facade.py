@@ -1,6 +1,7 @@
 from datetime import date, datetime
 from typing import Any
 
+from backend.agent.dispatcher_report import attach_report_if_missing
 from backend.card_template import empty_card
 from backend.models.appeal import Appeal
 from backend.models.appeal_event import AppealEvent
@@ -125,20 +126,35 @@ class AppealFacade:
         }
 
     async def messages(self, appeal_id: int) -> dict[str, Any]:
-        if await self._repo.get(appeal_id) is None:
+        appeal = await self._repo.get(appeal_id)
+        if appeal is None:
             raise AppealNotFoundError
         rows = await self._repo.list_messages(appeal_id)
+        items = [
+            {
+                "id": row.id,
+                "author": row.author,
+                "kind": row.kind,
+                "body": row.body,
+                "created_at": row.created_at.isoformat(),
+            }
+            for row in rows
+        ]
+        tool_names = [
+            str(row.body.get("name"))
+            for row in rows
+            if row.kind == "tool_result" and isinstance(row.body, dict) and row.body.get("name")
+        ]
+        created_at = rows[-1].created_at.isoformat() if rows else appeal.received_at.isoformat()
+        message_id = (rows[-1].id + 1) if rows else 1
         return {
-            "items": [
-                {
-                    "id": row.id,
-                    "author": row.author,
-                    "kind": row.kind,
-                    "body": row.body,
-                    "created_at": row.created_at.isoformat(),
-                }
-                for row in rows
-            ]
+            "items": attach_report_if_missing(
+                appeal.card,
+                items,
+                tool_names=tool_names,
+                message_id=message_id,
+                created_at=created_at,
+            )
         }
 
     async def reply(self, appeal_id: int, text: str, created_by: str) -> dict[str, Any]:

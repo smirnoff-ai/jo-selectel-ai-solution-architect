@@ -1,8 +1,14 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type Dispatch, type SetStateAction, useEffect, useRef, useState } from "react";
+import {
+  type Dispatch,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { CardChat } from "@/components/card-chat";
@@ -16,6 +22,7 @@ import { useSession } from "@/hooks/use-session";
 import { openAppealStream } from "@/lib/appeal-stream";
 import { ApiError, fetchAppeal, fetchMessages, sendReply } from "@/lib/api";
 import { asRecord, asText } from "@/lib/format";
+import { OUTCOME_LABEL } from "@/lib/labels";
 import { takeReturn } from "@/lib/return-path";
 import type { AppealDetail, AppealMessage, StreamEvent } from "@/lib/types";
 
@@ -24,17 +31,50 @@ export function AppealWorkspace({ appealId }: { appealId: number }) {
   const router = useRouter();
   const [appeal, setAppeal] = useState<AppealDetail | null>(null);
   const [messages, setMessages] = useState<AppealMessage[]>([]);
+  const [pendingThought, setPendingThought] = useState("");
+  const [pendingMessage, setPendingMessage] = useState("");
+  const [runMark, setRunMark] = useState<{ outcome?: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [missing, setMissing] = useState(false);
   const [runError, setRunError] = useState<string | null>(null);
   const seq = useRef(0);
   const closeRef = useRef<(() => void) | null>(null);
+  const readyRef = useRef(false);
+  const queueRef = useRef<StreamEvent[]>([]);
+
+  const deliver = useCallback((event: StreamEvent) => {
+    if (!readyRef.current) {
+      queueRef.current.push(event);
+      return;
+    }
+    applyEvent(
+      event,
+      setAppeal,
+      setMessages,
+      setPendingThought,
+      setPendingMessage,
+      setRunError,
+      setRunMark,
+      seq,
+      () => {
+        void refresh(appealId, setAppeal, setMessages);
+      },
+    );
+  }, [appealId]);
+
+  const attachStream = useCallback(() => {
+    closeRef.current?.();
+    closeRef.current = openAppealStream(appealId, deliver);
+  }, [appealId, deliver]);
 
   useEffect(() => {
     if (!login) {
       return;
     }
     let cancelled = false;
+    readyRef.current = false;
+    queueRef.current = [];
+    attachStream();
     void Promise.all([fetchAppeal(appealId), fetchMessages(appealId)])
       .then(([detail, feed]) => {
         if (cancelled) {
@@ -42,12 +82,14 @@ export function AppealWorkspace({ appealId }: { appealId: number }) {
         }
         setAppeal(detail);
         setMessages(feed.items);
-        if (detail.run_status === "running") {
-          closeRef.current = openAppealStream(appealId, (event) =>
-            applyEvent(event, setAppeal, setMessages, setRunError, seq, () => {
-              void refresh(appealId, setAppeal, setMessages);
-            }),
-          );
+        readyRef.current = true;
+        const queued = queueRef.current;
+        queueRef.current = [];
+        for (const event of queued) {
+          deliver(event);
+        }
+        if (detail.run_status !== "running") {
+          closeRef.current?.();
         }
       })
       .catch((err: unknown) => {
@@ -59,9 +101,10 @@ export function AppealWorkspace({ appealId }: { appealId: number }) {
       });
     return () => {
       cancelled = true;
+      readyRef.current = false;
       closeRef.current?.();
     };
-  }, [login, appealId]);
+  }, [login, appealId, attachStream, deliver]);
 
   if (!login) {
     return (
@@ -75,9 +118,9 @@ export function AppealWorkspace({ appealId }: { appealId: number }) {
     return (
       <AppShell login={login}>
         <AlertError>нет такого обращения</AlertError>
-        <Link href="/desk" className="mt-4 text-sm text-primary underline">
+        <Button className="mt-4" variant="outline" onClick={() => router.push("/desk")}>
           На стол
-        </Link>
+        </Button>
       </AppShell>
     );
   }
@@ -92,56 +135,57 @@ export function AppealWorkspace({ appealId }: { appealId: number }) {
 
   const decision = asRecord(appeal.card.decision);
   const running = appeal.run_status === "running";
+  const outcome = asText(decision.outcome);
 
   return (
-    <AppShell login={login}>
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <h1 className="font-serif text-3xl">R-{appeal.id}</h1>
-            <StatusBadge status={appeal.status} />
-            {running ? <Badge>идёт разбор</Badge> : null}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            создал {appeal.created_by} ·{" "}
-            {appeal.auto_in_prod || decision.auto_in_prod
-              ? "в проде ушло бы автоматом"
-              : "в проде нужен человек"}
-          </p>
+    <AppShell login={login} fill>
+      <div className="flex min-h-0 flex-1 flex-col gap-3">
+        <div className="flex shrink-0 items-center gap-3">
+          <h1 className="font-serif text-xl">R-{appeal.id}</h1>
+          <StatusBadge status={appeal.status} />
+          {running ? <Badge>идёт разбор</Badge> : null}
+          <span className="text-sm text-muted-foreground">
+            {OUTCOME_LABEL[outcome ?? ""] ?? outcome ?? "исхода ещё нет"}
+          </span>
+          <span className="text-sm text-muted-foreground">
+            {running ? "run: идёт" : "run: тихо"}
+          </span>
+          <Button className="ml-auto" variant="outline" size="sm" onClick={() => router.push(takeReturn())}>
+            Назад
+          </Button>
         </div>
-        <Button variant="outline" onClick={() => router.push(takeReturn())}>
-          Назад
-        </Button>
-      </div>
-      {runError ? <AlertError className="mt-4">{runError}</AlertError> : null}
-      {error ? <Alert className="mt-4">{error}</Alert> : null}
-      <div className="mt-6 grid grid-cols-2 gap-6">
-        <CardDocument card={appeal.card} running={running} />
-        <CardChat
-          messages={messages}
-          running={running}
-          onReply={async (text) => {
-            setRunError(null);
-            await sendReply(appealId, text);
-            setAppeal({ ...appeal, run_status: "running" });
-            setMessages((current) => [
-              ...current,
-              {
-                id: --seq.current,
-                author: login,
-                kind: "dispatcher_reply",
-                body: { text },
-                created_at: new Date().toISOString(),
-              },
-            ]);
-            closeRef.current?.();
-            closeRef.current = openAppealStream(appealId, (event) =>
-              applyEvent(event, setAppeal, setMessages, setRunError, seq, () => {
-                void refresh(appealId, setAppeal, setMessages);
-              }),
-            );
-          }}
-        />
+        {runError ? <AlertError>{runError}</AlertError> : null}
+        {error ? <Alert>{error}</Alert> : null}
+        <div className="grid min-h-0 flex-1 grid-cols-2 gap-4">
+          <CardDocument card={appeal.card} running={running} />
+          <CardChat
+            intake={asRecord(appeal.card.intake)}
+            messages={foldTools(messages)}
+            pendingThought={pendingThought}
+            pendingMessage={pendingMessage}
+            running={running}
+            runMark={running ? null : runMark}
+            onReply={async (text) => {
+              setRunError(null);
+              setRunMark(null);
+              setPendingThought("");
+              setPendingMessage("");
+              await sendReply(appealId, text);
+              setAppeal({ ...appeal, run_status: "running" });
+              setMessages((current) => [
+                ...current,
+                {
+                  id: --seq.current,
+                  author: login,
+                  kind: "dispatcher_reply",
+                  body: { text },
+                  created_at: new Date().toISOString(),
+                },
+              ]);
+              attachStream();
+            }}
+          />
+        </div>
       </div>
     </AppShell>
   );
@@ -151,17 +195,64 @@ function applyEvent(
   event: StreamEvent,
   setAppeal: Dispatch<SetStateAction<AppealDetail | null>>,
   setMessages: Dispatch<SetStateAction<AppealMessage[]>>,
+  setPendingThought: Dispatch<SetStateAction<string>>,
+  setPendingMessage: Dispatch<SetStateAction<string>>,
   setRunError: Dispatch<SetStateAction<string | null>>,
+  setRunMark: Dispatch<SetStateAction<{ outcome?: string } | null>>,
   seq: { current: number },
   onFinished: () => void,
 ) {
   if (event.type === "card_updated") {
     setAppeal((current) =>
-      current ? { ...current, card: asRecord(event.card) } : current,
+      current ? { ...current, card: asRecord(event.card), run_status: "running" } : current,
     );
     return;
   }
+  if (event.type === "thought") {
+    const delta = asText(event.delta);
+    if (delta) {
+      setPendingThought((current) => current + delta);
+      return;
+    }
+    const text = asText(event.text);
+    if (text) {
+      flushThought(setPendingThought, setMessages, seq, text);
+    }
+    return;
+  }
+  if (event.type === "tool_call") {
+    flushThought(setPendingThought, setMessages, seq);
+    setMessages((current) => [...current, liveMessage(--seq.current, "tool_call", event)]);
+    return;
+  }
+  if (event.type === "tool_result") {
+    setMessages((current) => [...current, liveMessage(--seq.current, "tool_result", event)]);
+    return;
+  }
+  if (event.type === "message_delta") {
+    flushThought(setPendingThought, setMessages, seq);
+    const delta = asText(event.delta) ?? "";
+    if (delta) {
+      setPendingMessage((current) => current + delta);
+    }
+    return;
+  }
+  if (event.type === "message_final") {
+    const text = asText(event.text) ?? "";
+    setPendingMessage("");
+    if (text) {
+      setMessages((current) => [...current, liveMessage(--seq.current, "message", { text })]);
+    }
+    return;
+  }
   if (event.type === "run_finished") {
+    flushThought(setPendingThought, setMessages, seq);
+    setPendingMessage((text) => {
+      if (text) {
+        setMessages((current) => [...current, liveMessage(--seq.current, "message", { text })]);
+      }
+      return "";
+    });
     setAppeal((current) =>
       current
         ? {
@@ -172,48 +263,115 @@ function applyEvent(
           }
         : current,
     );
+    setRunMark({ outcome: asText(event.outcome) ?? undefined });
     onFinished();
     return;
   }
   if (event.type === "run_error") {
     setRunError(asText(event.detail) ?? "Прогон упал");
+    setMessages((current) => [
+      ...current,
+      liveMessage(--seq.current, "run_error", { detail: asText(event.detail) }),
+    ]);
     return;
   }
-  const mapped = messageFromEvent(event, --seq.current);
-  if (mapped) {
-    setMessages((current) => [...current, mapped]);
+  if (event.type === "run_started" || event.type === "context_usage") {
+    return;
   }
+  setMessages((current) => [
+    ...current,
+    liveMessage(--seq.current, "unknown", { type: event.type }),
+  ]);
 }
 
-function messageFromEvent(event: StreamEvent, id: number): AppealMessage | null {
-  if (event.type === "thought") {
-    return {
-      id,
-      author: "agent",
-      kind: "thought",
-      body: { text: event.text },
-      created_at: new Date().toISOString(),
-    };
+function flushThought(
+  setPendingThought: Dispatch<SetStateAction<string>>,
+  setMessages: Dispatch<SetStateAction<AppealMessage[]>>,
+  seq: { current: number },
+  forced?: string,
+) {
+  setPendingThought((current) => {
+    const text = forced ?? current;
+    if (text.trim()) {
+      setMessages((messages) => [...messages, liveMessage(--seq.current, "thought", { text })]);
+    }
+    return "";
+  });
+}
+
+function liveMessage(
+  id: number,
+  kind: string,
+  body: Record<string, unknown>,
+): AppealMessage {
+  return {
+    id,
+    author: "agent",
+    kind,
+    body,
+    created_at: new Date().toISOString(),
+  };
+}
+
+function foldTools(messages: AppealMessage[]): AppealMessage[] {
+  const source = messages.some((item) => item.id < 0)
+    ? messages
+    : [...messages].sort((left, right) => left.id - right.id);
+  const out: AppealMessage[] = [];
+  const indexByKey = new Map<string, number>();
+
+  function remember(body: Record<string, unknown>, index: number, fallback: string) {
+    const ident = asText(body.id);
+    if (ident) {
+      indexByKey.set(ident, index);
+    }
+    const name = asText(body.name);
+    if (name) {
+      indexByKey.set(`${name}:${fallback}`, index);
+    }
   }
-  if (event.type === "tool_call" || event.type === "tool_result") {
-    return {
-      id,
-      author: "agent",
-      kind: event.type,
-      body: event,
-      created_at: new Date().toISOString(),
-    };
+
+  function findPair(body: Record<string, unknown>, kind: string): number | undefined {
+    const ident = asText(body.id);
+    if (ident && indexByKey.has(ident)) {
+      const index = indexByKey.get(ident);
+      if (index !== undefined && out[index].kind === kind) {
+        return index;
+      }
+    }
+    const name = asText(body.name);
+    if (!name) {
+      return undefined;
+    }
+    for (let i = out.length - 1; i >= 0; i -= 1) {
+      if (out[i].kind === kind && asText(asRecord(out[i].body).name) === name) {
+        return i;
+      }
+    }
+    return undefined;
   }
-  if (event.type === "message_final") {
-    return {
-      id,
-      author: "agent",
-      kind: "message",
-      body: { text: event.text },
-      created_at: new Date().toISOString(),
-    };
+
+  for (const message of source) {
+    const body = asRecord(message.body);
+    if (message.kind === "tool_call" || message.kind === "tool_result") {
+      const other = message.kind === "tool_call" ? "tool_result" : "tool_call";
+      const index = findPair(body, other);
+      if (index !== undefined) {
+        out[index] = {
+          ...out[index],
+          kind: "tool_result",
+          body: { ...out[index].body, ...body },
+        };
+        remember(body, index, "pair");
+        continue;
+      }
+      remember(body, out.length, "open");
+      out.push(message);
+      continue;
+    }
+    out.push(message);
   }
-  return null;
+  return out;
 }
 
 async function refresh(

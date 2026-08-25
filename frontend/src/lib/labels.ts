@@ -50,3 +50,30 @@ export const KIND_LABEL: Record<string, string> = {
   assumption: "предположение",
   system: "система",
 };
+
+export const SOURCE_LABEL: Record<string, string> = {
+  intake_text: "текст входа",
+  intake_sender: "отправитель",
+  intake_attachment: "вложение",
+  dispatcher: "диспетчер",
+  crm: "CRM",
+  eam: "EAM",
+  contract: "договор",
+  itsm: "ITSM",
+};
+
+export const CONFIDENCE_LABEL: Record<string, string> = {
+  high: "высокая",
+  medium: "средняя",
+  low: "низкая",
+};
+
+export const TOOL_LABEL: Record<string, string> = {
+  patch_facts: "Запись фактов",
+  update_card: "Запись карточки",
+  search_sites: "Поиск площадок (CRM)",
+  search_assets: "Поиск оборудования (EAM)",
+  search_tickets: "Открытые заявки (ITSM)",
+  get_contract: "Договор площадки",
+  calculate: "Расчёт срока и приоритета",
+};

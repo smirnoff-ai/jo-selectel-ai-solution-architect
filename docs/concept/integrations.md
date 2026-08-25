@@ -51,7 +51,7 @@
 | Протокол | HTTPS Langfuse SDK |
 | Критичность | MVP |
 
-`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`. Нет — Рефлекс не стартует. Промпты из Langfuse не читаем.
+`LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST`. Нет — Рефлекс не стартует. Промпты из Langfuse не читаем. Локально — self-host v4 (ClickHouse / Redis / MinIO), SDK актуальный.
 
 Почта, Telegram, очередь, настоящая CRM — не подключаем.
 

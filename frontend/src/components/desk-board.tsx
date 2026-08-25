@@ -1,11 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty } from "@/components/ui/empty";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -19,7 +17,6 @@ import type { DeskWidget } from "@/lib/types";
 
 export function DeskBoard() {
   const login = useSession();
-  const router = useRouter();
   const [widgets, setWidgets] = useState<DeskWidget[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,10 +40,7 @@ export function DeskBoard() {
 
   return (
     <AppShell login={login}>
-      <div className="flex items-center justify-between gap-4">
-        <h1 className="font-serif text-3xl">Стол</h1>
-        <Button onClick={() => router.push("/appeals/new")}>Создать обращение</Button>
-      </div>
+      <h1 className="font-serif text-3xl">Стол</h1>
       {error ? <AlertError className="mt-6">{error}</AlertError> : null}
       <div className="mt-6 grid grid-cols-2 gap-4">
         {widgets

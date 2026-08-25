@@ -1,32 +1,76 @@
 import type { StreamEvent } from "@/lib/types";
 
-const TYPES = [
-  "run_started",
-  "thought",
-  "tool_call",
-  "tool_result",
-  "card_updated",
-  "message_delta",
-  "message_final",
-  "run_finished",
-  "run_error",
-] as const;
-
 export function openAppealStream(
   id: number,
   onEvent: (event: StreamEvent) => void,
 ): () => void {
-  const source = new EventSource(`/api/v1/appeals/${id}/stream`);
-  for (const type of TYPES) {
-    source.addEventListener(type, (raw) => {
-      const frame = raw as MessageEvent<string>;
-      try {
-        const data = JSON.parse(frame.data) as Record<string, unknown>;
-        onEvent({ ...data, type });
-      } catch {
-        onEvent({ type, raw: frame.data });
+  const controller = new AbortController();
+  void readFrames(id, onEvent, controller.signal);
+  return () => controller.abort();
+}
+
+async function readFrames(
+  id: number,
+  onEvent: (event: StreamEvent) => void,
+  signal: AbortSignal,
+): Promise<void> {
+  try {
+    const response = await fetch(`/api/v1/appeals/${id}/stream`, {
+      signal,
+      cache: "no-store",
+      headers: { Accept: "text/event-stream" },
+    });
+    if (!response.ok || !response.body) {
+      onEvent({ type: "run_error", detail: `stream ${response.status}` });
+      return;
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
       }
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
+      for (const frame of frames) {
+        const event = parseBlock(frame);
+        if (event) {
+          onEvent(event);
+        }
+      }
+    }
+  } catch (err) {
+    if (signal.aborted) {
+      return;
+    }
+    onEvent({
+      type: "run_error",
+      detail: err instanceof Error ? err.message : "stream",
     });
   }
-  return () => source.close();
+}
+
+function parseBlock(block: string): StreamEvent | null {
+  let type = "message";
+  const data: string[] = [];
+  for (const line of block.split("\n")) {
+    if (line.startsWith("event:")) {
+      type = line.slice(6).trim();
+    }
+    if (line.startsWith("data:")) {
+      data.push(line.slice(5).trimStart());
+    }
+  }
+  if (data.length === 0) {
+    return null;
+  }
+  try {
+    const payload = JSON.parse(data.join("\n")) as Record<string, unknown>;
+    return { ...payload, type: typeof payload.type === "string" ? payload.type : type };
+  } catch {
+    return { type, raw: data.join("\n") };
+  }
 }

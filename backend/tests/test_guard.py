@@ -15,6 +15,33 @@ def _card() -> dict:
     )
 
 
+def _filled(card: dict) -> dict:
+    card["facts"]["customer"]["binding"] = {
+        "status": "resolved",
+        "id": "C-101",
+        "label": "Клиент",
+        "candidates": [],
+    }
+    card["facts"]["site"]["binding"] = {
+        "status": "resolved",
+        "id": "S-1",
+        "label": "Площадка",
+        "candidates": [],
+    }
+    card["facts"]["asset"]["binding"] = {
+        "status": "resolved",
+        "id": "A-1",
+        "label": "Установка",
+        "candidates": [],
+    }
+    card["contract"] = {
+        "status": "resolved",
+        "id": "K-1",
+        "coverage": ["diagnostics", "repair"],
+    }
+    return card
+
+
 def test_create_without_support_becomes_clarify() -> None:
     finale = Finale(outcome="create", reason="заведём")
     decided = apply_guard(_card(), finale, {})
@@ -27,31 +54,32 @@ def test_two_catalog_errors_dispatch() -> None:
     assert decided.outcome == "dispatch"
 
 
-def test_resolved_without_ticket_is_create() -> None:
-    card = _card()
-    card["facts"]["customer"]["binding"] = {
-        "status": "resolved",
-        "id": "C-101",
-        "label": "СеверФуд",
-        "candidates": [],
-    }
-    card["facts"]["site"]["binding"] = {
-        "status": "resolved",
-        "id": "S-MSK-01",
-        "label": "Дмитровское",
-        "candidates": [],
-    }
-    card["facts"]["asset"]["binding"] = {
-        "status": "resolved",
-        "id": "A-1003",
-        "label": "ХУ-18",
-        "candidates": [],
-    }
-    card["contract"] = {
-        "status": "resolved",
-        "id": "K-101",
-        "coverage": ["diagnostics", "repair"],
-    }
+def test_agreed_clarify_stays() -> None:
+    card = _filled(_card())
     decided = apply_guard(card, Finale(outcome="clarify", reason="не уверен"), {})
-    assert decided.outcome == "create"
+    assert decided.outcome == "clarify"
     assert support_clear(card, "create") is True
+
+
+def test_agreed_create_stays() -> None:
+    card = _filled(_card())
+    decided = apply_guard(card, Finale(outcome="create", reason="заведём"), {})
+    assert decided.outcome == "create"
+
+
+def test_missing_finale_is_dispatch() -> None:
+    decided = apply_guard(_filled(_card()), None, {})
+    assert decided.outcome == "dispatch"
+    assert decided.reason == "Модель не вернула финал"
+
+
+def test_create_when_ticket_exists_becomes_update() -> None:
+    card = _filled(_card())
+    card["facts"]["history"]["binding"] = {
+        "status": "resolved",
+        "id": "T-1",
+        "label": "Заявка",
+        "candidates": [],
+    }
+    decided = apply_guard(card, Finale(outcome="create", reason="заведём"), {})
+    assert decided.outcome == "update"
