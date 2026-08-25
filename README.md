@@ -5,6 +5,52 @@
 Задание: спроектировать и реализовать прототип ИИ-диспетчера сервисных заявок.  
 Оригинальный бриф: [docs/requirements/task.md](docs/requirements/task.md).
 
+![ИИ-диспетчер Рефлекс — карточка разбора и маскот Максоат](docs/assets/reflex-hero.png)
+
+---
+
+## Содержание
+
+| | |
+|---|---|
+| [Что здесь сделано](#что-здесь-сделано) | Суть прототипа |
+| [Названия — выдуманные](#названия--выдуманные) | Рефлекс, СеверХолод, mock |
+| [Как запустить](#как-запустить) | Docker, ключ, `make up` / `make accept` |
+| [Структура репозитория](#структура-репозитория) | Папки проекта |
+| [Архитектура](#архитектура) | Два контура, диаграмма |
+| [Как работает агент](#как-работает-агент) | Tools, SSE, модель vs код |
+| [Приёмочные сценарии](#приёмочные-сценарии) | S1–S4 |
+| [Технические решения](#технические-решения) | OpenRouter, ChatOpenRouter |
+| [Допущения](#допущения-и-ограничения) | Ограничения прототипа |
+| [Таймбокс](#таймбокс) | Как шла работа |
+
+### Документация проекта
+
+Полный навигатор: [docs/README.md](docs/README.md).
+
+**С чего начать читать (концепт):** [idea](docs/concept/idea.md) → [vision](docs/concept/vision.md) → [architecture](docs/concept/architecture.md) → [agent-harness](docs/concept/agent-harness.md)
+
+**Все concept-документы:**
+
+| Документ | О чём |
+|----------|-------|
+| [idea.md](docs/concept/idea.md) | Суть продукта, MVP, границы прототипа |
+| [vision.md](docs/concept/vision.md) | Сценарии, стек, два контура |
+| [architecture.md](docs/concept/architecture.md) | Потоки, слои, compose |
+| [data-model.md](docs/concept/data-model.md) | Сид мока и таблицы Рефлекса |
+| [integrations.md](docs/concept/integrations.md) | Mock, LLM, Langfuse |
+| [api-contracts-mock.md](docs/concept/api-contracts-mock.md) | HTTP-контракт справочников |
+| [api-contracts.md](docs/concept/api-contracts.md) | REST и SSE Рефлекса |
+| [frontend-design.md](docs/concept/frontend-design.md) | Визуал UI |
+| [frontend-ux-logic.md](docs/concept/frontend-ux-logic.md) | Поведение экранов |
+| [agent-harness.md](docs/concept/agent-harness.md) | Агент, tools, карточка |
+| [agent-security.md](docs/concept/agent-security.md) | Защита action space |
+| [generation.md](docs/concept/generation.md) | SSE-стрим событий |
+
+**Материалы брифа и приёмки:** [requirements/task.md](docs/requirements/task.md) · [scenarios.md](docs/requirements/severholod/scenarios.md) · [system prompt](docs/requirements/severholod/prompts/system.md)
+
+**Процесс разработки:** [ai-journal.md](docs/ai-journal.md) · [roadmap.md](docs/roadmap.md) · [sprints/](docs/sprints/)
+
 ---
 
 ## Что здесь сделано
